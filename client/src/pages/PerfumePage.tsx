@@ -212,9 +212,7 @@ export default function PerfumePage() {
       {/* ── SECTION 1: LEFT PANEL + HERO IMAGE ── */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "340px 1fr",
-        maxWidth: "1200px",
-        margin: "0 auto",
+        gridTemplateColumns: "360px 1fr",
         minHeight: "100vh",
       }}>
         {/* Left sticky panel */}
@@ -315,7 +313,7 @@ export default function PerfumePage() {
       </div>
 
       {/* ── SECTION 2: SCENT NOTES + RADAR + DESCRIPTION ── */}
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      <div>
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr 1fr",
