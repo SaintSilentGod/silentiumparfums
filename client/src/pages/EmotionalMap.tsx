@@ -105,34 +105,64 @@ export default function EmotionalMap() {
     resize();
     window.addEventListener("resize", resize);
 
-    for (let i = 0; i < 120; i++) {
+    // Star dust background — dense golden micro-particles
+    for (let i = 0; i < 400; i++) {
       particles.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.25,
-        size: Math.random() * 1.2 + 0.2,
-        opacity: Math.random() * 0.4 + 0.05,
-        life: Math.random() * 300,
-        maxLife: 300 + Math.random() * 400,
+        vx: (Math.random() - 0.5) * 0.06,
+        vy: (Math.random() - 0.5) * 0.06,
+        size: Math.random() < 0.65 ? Math.random() * 0.7 + 0.15 : Math.random() * 1.8 + 0.7,
+        opacity: Math.random() * 0.7 + 0.15,
+        life: Math.random() * 500,
+        maxLife: 400 + Math.random() * 600,
       });
     }
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Radial golden nebula glow at center
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(canvas.width, canvas.height) * 0.65);
+      grad.addColorStop(0, 'rgba(201,169,110,0.12)');
+      grad.addColorStop(0.3, 'rgba(180,130,80,0.07)');
+      grad.addColorStop(0.6, 'rgba(150,100,60,0.03)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       particles.forEach((p) => {
         p.life++;
         if (p.life > p.maxLife) {
           p.x = Math.random() * canvas.width;
           p.y = Math.random() * canvas.height;
           p.life = 0;
+          p.maxLife = 400 + Math.random() * 600;
         }
         const progress = p.life / p.maxLife;
-        const fade = progress < 0.1 ? progress / 0.1 : progress > 0.9 ? (1 - progress) / 0.1 : 1;
+        // Twinkle: sine wave opacity modulation
+        const twinkle = 0.6 + 0.4 * Math.sin(progress * Math.PI * 4 + p.x);
+        const fade = progress < 0.08 ? progress / 0.08 : progress > 0.92 ? (1 - progress) / 0.08 : 1;
+        const finalOpacity = p.opacity * fade * twinkle;
+
+        // Larger stars get a soft glow halo
+        if (p.size > 1.0) {
+          const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
+          halo.addColorStop(0, `rgba(201,169,110,${finalOpacity * 0.5})`);
+          halo.addColorStop(1, 'rgba(201,169,110,0)');
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+          ctx.fillStyle = halo;
+          ctx.fill();
+        }
+
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(201, 169, 110, ${p.opacity * fade * 0.6})`;
+        ctx.fillStyle = `rgba(220, 190, 130, ${finalOpacity})`;
         ctx.fill();
+
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0) p.x = canvas.width;
@@ -403,27 +433,72 @@ export default function EmotionalMap() {
             className="absolute inset-0 w-full h-full pointer-events-none"
             style={{ overflow: "visible" }}
           >
-            {/* Lines from center to nodes */}
-            {nodes.map((node) => (
-              <g key={node.id}>
-                <line
-                  x1={centerX}
-                  y1={centerY}
-                  x2={node.x}
-                  y2={node.y}
-                  stroke={hoveredNode === node.id ? "rgba(201,169,110,0.5)" : "rgba(201,169,110,0.12)"}
-                  strokeWidth={hoveredNode === node.id ? "0.8" : "0.5"}
-                  style={{ transition: "all 0.3s ease" }}
-                />
-                {/* Midpoint glow dot */}
-                <circle
-                  cx={(centerX + node.x) / 2}
-                  cy={(centerY + node.y) / 2}
-                  r="1"
-                  fill="rgba(201,169,110,0.2)"
-                />
-              </g>
-            ))}
+            <defs>
+              <filter id="glow-line" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              <filter id="glow-line-hover" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+            {/* Organic cubic bezier neural curves from center to each node */}
+            {nodes.map((node, i) => {
+              const isHovered = hoveredNode === node.id;
+              // Control points: offset perpendicular to the line for organic curve
+              const dx = node.x - centerX;
+              const dy = node.y - centerY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              // Perpendicular offset — alternating sides for organic feel
+              const perpX = -dy / dist;
+              const perpY = dx / dist;
+              const curveMag = dist * (0.25 + 0.15 * Math.sin(i * 1.7));
+              const side = i % 2 === 0 ? 1 : -1;
+              // Two control points for S-curve feel
+              const cp1x = centerX + dx * 0.3 + perpX * curveMag * side * 0.6;
+              const cp1y = centerY + dy * 0.3 + perpY * curveMag * side * 0.6;
+              const cp2x = centerX + dx * 0.7 - perpX * curveMag * side * 0.4;
+              const cp2y = centerY + dy * 0.7 - perpY * curveMag * side * 0.4;
+              const d = `M ${centerX} ${centerY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${node.x} ${node.y}`;
+              // Midpoint along curve (approx t=0.5)
+              const midX = 0.125*centerX + 0.375*cp1x + 0.375*cp2x + 0.125*node.x;
+              const midY = 0.125*centerY + 0.375*cp1y + 0.375*cp2y + 0.125*node.y;
+              return (
+                <g key={node.id}>
+                  {/* Glow layer */}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={isHovered ? "rgba(201,169,110,0.5)" : "rgba(201,169,110,0.18)"}
+                    strokeWidth={isHovered ? "4" : "3"}
+                    filter={isHovered ? "url(#glow-line-hover)" : "url(#glow-line)"}
+                    style={{ transition: "stroke 0.4s ease, stroke-width 0.4s ease" }}
+                  />
+                  {/* Core line */}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={isHovered ? "rgba(220,190,140,0.9)" : "rgba(201,169,110,0.35)"}
+                    strokeWidth={isHovered ? "1" : "0.7"}  
+                    style={{ transition: "stroke 0.4s ease, stroke-width 0.4s ease" }}
+                  />
+                  {/* Small glowing dot at midpoint of curve */}
+                  <circle cx={midX} cy={midY} r="1.5"
+                    fill={isHovered ? "rgba(201,169,110,0.8)" : "rgba(201,169,110,0.25)"}
+                    filter="url(#glow-line)"
+                    style={{ transition: "fill 0.4s ease" }}
+                  />
+                  {/* Quarter-point dot */}
+                  <circle
+                    cx={0.42*centerX + 0.42*cp1x + 0.12*cp2x + 0.04*node.x}
+                    cy={0.42*centerY + 0.42*cp1y + 0.12*cp2y + 0.04*node.y}
+                    r="0.8"
+                    fill="rgba(201,169,110,0.2)"
+                  />
+                </g>
+              );
+            })}
           </svg>
 
           {/* Center origin point */}
