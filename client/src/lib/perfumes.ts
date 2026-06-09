@@ -26,6 +26,7 @@ export interface Perfume {
   origin: { coords: string; location: { ru: string; en: string } };
   releaseDate: string;
   heroImage: string;
+  gallery?: string[];  // optional extra images for gallery slider
   accentColor: string;       // primary accent (hex)
   accentColorDim: string;    // rgba dim version for radar/glow
   radarFill: string;         // rgba fill for radar chart
@@ -369,7 +370,14 @@ export const perfumes: Perfume[] = [
     },
     origin: { coords: "55.5827° N, 39.1285° E", location: { ru: "Россия", en: "Russia" } },
     releaseDate: "01 / 10 / 2023",
-    heroImage: "https://d2xsxph8kpxj0f.cloudfront.net/120386225/Z5Dj7KAQS93qgLNa7h9H2n/hero-summer-2009-5PYYhU6CGR5NPgQ6oiv2WD.webp",
+    heroImage: "/manus-storage/s2009-berries_58791e1c.png",
+    gallery: [
+      "/manus-storage/s2009-berries_58791e1c.png",
+      "/manus-storage/s2009-jar_95a44090.png",
+      "/manus-storage/s2009-photo_688e6eae.png",
+      "/manus-storage/s2009-path_063a07f8.png",
+      "/manus-storage/s2009-bike_afdad28e.png",
+    ],
     accentColor: "#7a9a5a",
     accentColorDim: "rgba(122,154,90,0.35)",
     radarFill: "rgba(122,154,90,0.12)",

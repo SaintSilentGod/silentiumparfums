@@ -293,23 +293,93 @@ export default function PerfumePage() {
           </p>
         </div>
 
-        {/* Right: hero image */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ position: "relative", height: "calc(100vh - 57px)", overflow: "hidden" }}>
-            <p className="font-mono-label absolute top-4 left-4 z-10" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
-              VISUAL REFERENCE
-            </p>
-            <p className="font-mono-label absolute top-4 right-4 z-10" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
-              01 / 01
-            </p>
-            <img
-              src={perfume.heroImage}
-              alt={perfume.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", filter: "brightness(0.78) contrast(1.06)" }}
-            />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(8,8,8,0.75) 100%)" }} />
-          </div>
-        </div>
+        {/* Right: hero image gallery */}
+        {(() => {
+          const gallery = perfume.gallery && perfume.gallery.length > 0 ? perfume.gallery : [perfume.heroImage];
+          const [activeIdx, setActiveIdx] = React.useState(0);
+          return (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {/* Main image */}
+              <div style={{ position: "relative", height: gallery.length > 1 ? "calc(100vh - 57px - 90px)" : "calc(100vh - 57px)", overflow: "hidden" }}>
+                <p className="font-mono-label absolute top-4 left-4 z-10" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
+                  VISUAL REFERENCE
+                </p>
+                <p className="font-mono-label absolute top-4 right-4 z-10" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
+                  {String(activeIdx + 1).padStart(2, "0")} / {String(gallery.length).padStart(2, "0")}
+                </p>
+                <img
+                  key={activeIdx}
+                  src={gallery[activeIdx]}
+                  alt={`${perfume.name} ${activeIdx + 1}`}
+                  style={{
+                    width: "100%", height: "100%",
+                    objectFit: "cover", objectPosition: "center",
+                    filter: "brightness(0.78) contrast(1.06)",
+                    animation: "fadeIn 0.4s ease",
+                  }}
+                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(8,8,8,0.75) 100%)" }} />
+                {/* Arrow navigation */}
+                {gallery.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActiveIdx((i) => (i - 1 + gallery.length) % gallery.length)}
+                      style={{
+                        position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)",
+                        background: "rgba(8,8,8,0.5)", border: "0.5px solid rgba(255,255,255,0.1)",
+                        color: "rgba(232,228,220,0.6)", width: "32px", height: "32px",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.8rem", cursor: "pointer", zIndex: 10,
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = accentColor; (e.currentTarget as HTMLElement).style.color = accentColor; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.currentTarget as HTMLElement).style.color = "rgba(232,228,220,0.6)"; }}
+                    >‹</button>
+                    <button
+                      onClick={() => setActiveIdx((i) => (i + 1) % gallery.length)}
+                      style={{
+                        position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)",
+                        background: "rgba(8,8,8,0.5)", border: "0.5px solid rgba(255,255,255,0.1)",
+                        color: "rgba(232,228,220,0.6)", width: "32px", height: "32px",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.8rem", cursor: "pointer", zIndex: 10,
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = accentColor; (e.currentTarget as HTMLElement).style.color = accentColor; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.currentTarget as HTMLElement).style.color = "rgba(232,228,220,0.6)"; }}
+                    >›</button>
+                  </>
+                )}
+              </div>
+              {/* Thumbnails strip */}
+              {gallery.length > 1 && (
+                <div style={{
+                  display: "flex", gap: "4px", height: "86px",
+                  borderTop: "0.5px solid rgba(255,255,255,0.06)",
+                  padding: "4px", background: "rgba(8,8,8,0.9)",
+                  overflowX: "auto",
+                }}>
+                  {gallery.map((src, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveIdx(i)}
+                      style={{
+                        flexShrink: 0, width: "120px", height: "78px",
+                        border: i === activeIdx ? `1px solid ${accentColor}` : "0.5px solid rgba(255,255,255,0.08)",
+                        overflow: "hidden", cursor: "pointer", padding: 0,
+                        transition: "border-color 0.2s ease",
+                        opacity: i === activeIdx ? 1 : 0.55,
+                      }}
+                    >
+                      <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.8)" }} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+        <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
       </div>
 
       {/* ── SECTION 2: SCENT NOTES + RADAR + DESCRIPTION ── */}
