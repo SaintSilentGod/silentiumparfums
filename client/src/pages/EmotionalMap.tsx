@@ -68,6 +68,7 @@ export default function EmotionalMap() {
   const [, navigate] = useLocation();
   const { lang, setLang, t } = useLang();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const neuralCanvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
   const [step, setStep] = useState<Step>(0);
@@ -180,6 +181,154 @@ export default function EmotionalMap() {
     };
   }, []);
 
+  // Neural network Canvas renderer — axon-like paths with dashes, branches, dendrites
+  useEffect(() => {
+    const canvas = neuralCanvasRef.current;
+    if (!canvas || nodes.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Seeded pseudo-random per node index for stable variation
+    const rng = (seed: number) => {
+      const x = Math.sin(seed * 9301 + 49297) * 233280;
+      return x - Math.floor(x);
+    };
+
+    nodes.forEach((node, i) => {
+      const isHovered = hoveredNode === node.id;
+      const dx = node.x - centerX;
+      const dy = node.y - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const nx = dx / dist; // unit vector
+      const ny = dy / dist;
+      const perpX = -ny;
+      const perpY = nx;
+
+      // Each neuron gets a unique personality
+      const style = Math.floor(rng(i * 3) * 4); // 0=smooth, 1=dashed, 2=branching, 3=wandering
+      const curveSide = rng(i * 7) > 0.5 ? 1 : -1;
+      const curveMag = dist * (0.18 + rng(i * 11) * 0.28);
+
+      // Base color
+      const alpha = isHovered ? 0.75 : 0.28 + rng(i * 5) * 0.12;
+      const glowAlpha = isHovered ? 0.4 : 0.1;
+      const lineWidth = isHovered ? 1.0 : 0.55 + rng(i * 13) * 0.25;
+
+      // Control points for main curve
+      const cp1x = centerX + dx * 0.28 + perpX * curveMag * curveSide;
+      const cp1y = centerY + dy * 0.28 + perpY * curveMag * curveSide;
+      const cp2x = centerX + dx * 0.72 - perpX * curveMag * curveSide * 0.5;
+      const cp2y = centerY + dy * 0.72 - perpY * curveMag * curveSide * 0.5;
+
+      // Helper: point on cubic bezier at t
+      const bezier = (t: number) => ({
+        x: Math.pow(1-t,3)*centerX + 3*Math.pow(1-t,2)*t*cp1x + 3*(1-t)*t*t*cp2x + t*t*t*node.x,
+        y: Math.pow(1-t,3)*centerY + 3*Math.pow(1-t,2)*t*cp1y + 3*(1-t)*t*t*cp2y + t*t*t*node.y,
+      });
+
+      // --- GLOW layer ---
+      ctx.save();
+      ctx.shadowColor = isHovered ? 'rgba(201,169,110,0.9)' : 'rgba(201,169,110,0.5)';
+      ctx.shadowBlur = isHovered ? 12 : 6;
+      ctx.strokeStyle = `rgba(201,169,110,${glowAlpha})`;
+      ctx.lineWidth = isHovered ? 5 : 3;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, node.x, node.y);
+      ctx.stroke();
+      ctx.restore();
+
+      // --- CORE line ---
+      ctx.save();
+      ctx.shadowColor = 'rgba(201,169,110,0.3)';
+      ctx.shadowBlur = 3;
+      ctx.strokeStyle = `rgba(${isHovered ? '230,200,150' : '201,169,110'},${alpha})`;
+      ctx.lineWidth = lineWidth;
+
+      if (style === 1) {
+        // Dashed axon
+        const dashLen = 4 + rng(i * 17) * 6;
+        const gapLen = 3 + rng(i * 19) * 8;
+        ctx.setLineDash([dashLen, gapLen]);
+      } else if (style === 3) {
+        // Dotted
+        ctx.setLineDash([1.5, 5 + rng(i * 23) * 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, node.x, node.y);
+      ctx.stroke();
+      ctx.restore();
+
+      // --- BRANCHES / DENDRITES (style 2 = branching, but add small ones to all) ---
+      const branchCount = style === 2 ? 2 + Math.floor(rng(i * 29) * 2) : 1;
+      for (let b = 0; b < branchCount; b++) {
+        const t = 0.3 + rng(i * 31 + b * 7) * 0.45; // branch origin along main curve
+        const origin = bezier(t);
+        const branchSide = rng(i * 37 + b) > 0.5 ? 1 : -1;
+        const branchLen = dist * (0.06 + rng(i * 41 + b * 3) * 0.12);
+        // Branch direction: mix of perpendicular and forward
+        const fwd = bezier(Math.min(t + 0.05, 1));
+        const fwdX = fwd.x - origin.x;
+        const fwdY = fwd.y - origin.y;
+        const fwdLen = Math.sqrt(fwdX*fwdX + fwdY*fwdY) || 1;
+        const bperpX = -fwdY / fwdLen;
+        const bperpY = fwdX / fwdLen;
+        const endX = origin.x + bperpX * branchLen * branchSide + fwdX / fwdLen * branchLen * 0.4;
+        const endY = origin.y + bperpY * branchLen * branchSide + fwdY / fwdLen * branchLen * 0.4;
+        // Branch control point
+        const bcpX = origin.x + bperpX * branchLen * branchSide * 0.5;
+        const bcpY = origin.y + bperpY * branchLen * branchSide * 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(201,169,110,${alpha * 0.45})`;
+        ctx.lineWidth = lineWidth * 0.45;
+        ctx.setLineDash(rng(i * 43 + b) > 0.5 ? [2, 4] : []);
+        ctx.shadowColor = 'rgba(201,169,110,0.2)';
+        ctx.shadowBlur = 3;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.quadraticCurveTo(bcpX, bcpY, endX, endY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Tiny terminal dot at branch end
+        ctx.save();
+        ctx.fillStyle = `rgba(201,169,110,${alpha * 0.5})`;
+        ctx.shadowColor = 'rgba(201,169,110,0.4)';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(endX, endY, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // --- GLOWING DOTS along path ---
+      const dotCount = 2 + Math.floor(rng(i * 53) * 3);
+      for (let d = 0; d < dotCount; d++) {
+        const t = 0.15 + (d / (dotCount + 1)) * 0.7;
+        const pt = bezier(t);
+        const dotR = 0.8 + rng(i * 59 + d) * 1.2;
+        ctx.save();
+        ctx.fillStyle = `rgba(201,169,110,${alpha * (0.4 + rng(i * 61 + d) * 0.4)})`;
+        ctx.shadowColor = 'rgba(201,169,110,0.6)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, dotR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+  }, [nodes, hoveredNode, centerX, centerY]);
+
   // Intro animation
   useEffect(() => {
     const t1 = setTimeout(() => setIntroVisible(true), 200);
@@ -273,6 +422,9 @@ export default function EmotionalMap() {
 
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 z-10 pointer-events-none" />
+
+      {/* Neural network Canvas — axon paths with dashes, branches, dendrites */}
+      <canvas ref={neuralCanvasRef} className="absolute inset-0 z-20 pointer-events-none" />
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between px-8 py-6" style={{ borderBottom: "0.5px solid rgba(255,255,255,0.06)" }}>
@@ -426,80 +578,9 @@ export default function EmotionalMap() {
         </div>
       )}
 
-      {/* Neural network SVG + nodes */}
+      {/* Neural network nodes — lines drawn on canvas above */}
       {step >= 1 && step <= 3 && nodes.length > 0 && (
         <div className="absolute inset-0 z-30">
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ overflow: "visible" }}
-          >
-            <defs>
-              <filter id="glow-line" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2.5" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-              <filter id="glow-line-hover" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="4" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
-            {/* Organic cubic bezier neural curves from center to each node */}
-            {nodes.map((node, i) => {
-              const isHovered = hoveredNode === node.id;
-              // Control points: offset perpendicular to the line for organic curve
-              const dx = node.x - centerX;
-              const dy = node.y - centerY;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              // Perpendicular offset — alternating sides for organic feel
-              const perpX = -dy / dist;
-              const perpY = dx / dist;
-              const curveMag = dist * (0.25 + 0.15 * Math.sin(i * 1.7));
-              const side = i % 2 === 0 ? 1 : -1;
-              // Two control points for S-curve feel
-              const cp1x = centerX + dx * 0.3 + perpX * curveMag * side * 0.6;
-              const cp1y = centerY + dy * 0.3 + perpY * curveMag * side * 0.6;
-              const cp2x = centerX + dx * 0.7 - perpX * curveMag * side * 0.4;
-              const cp2y = centerY + dy * 0.7 - perpY * curveMag * side * 0.4;
-              const d = `M ${centerX} ${centerY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${node.x} ${node.y}`;
-              // Midpoint along curve (approx t=0.5)
-              const midX = 0.125*centerX + 0.375*cp1x + 0.375*cp2x + 0.125*node.x;
-              const midY = 0.125*centerY + 0.375*cp1y + 0.375*cp2y + 0.125*node.y;
-              return (
-                <g key={node.id}>
-                  {/* Glow layer */}
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={isHovered ? "rgba(201,169,110,0.5)" : "rgba(201,169,110,0.18)"}
-                    strokeWidth={isHovered ? "4" : "3"}
-                    filter={isHovered ? "url(#glow-line-hover)" : "url(#glow-line)"}
-                    style={{ transition: "stroke 0.4s ease, stroke-width 0.4s ease" }}
-                  />
-                  {/* Core line */}
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={isHovered ? "rgba(220,190,140,0.9)" : "rgba(201,169,110,0.35)"}
-                    strokeWidth={isHovered ? "1" : "0.7"}  
-                    style={{ transition: "stroke 0.4s ease, stroke-width 0.4s ease" }}
-                  />
-                  {/* Small glowing dot at midpoint of curve */}
-                  <circle cx={midX} cy={midY} r="1.5"
-                    fill={isHovered ? "rgba(201,169,110,0.8)" : "rgba(201,169,110,0.25)"}
-                    filter="url(#glow-line)"
-                    style={{ transition: "fill 0.4s ease" }}
-                  />
-                  {/* Quarter-point dot */}
-                  <circle
-                    cx={0.42*centerX + 0.42*cp1x + 0.12*cp2x + 0.04*node.x}
-                    cy={0.42*centerY + 0.42*cp1y + 0.12*cp2y + 0.04*node.y}
-                    r="0.8"
-                    fill="rgba(201,169,110,0.2)"
-                  />
-                </g>
-              );
-            })}
-          </svg>
 
           {/* Center origin point */}
           <div
