@@ -51,8 +51,8 @@ export const perfumes: Perfume[] = [
       { key: "transcendence", label: { ru: "Трансценд.", en: "Transcend." }, value: 63 },
     ],
     description: {
-      ru: "Момент между мирами. Воздух становится тоньше. Тишина углубляется. Тени слушают. Ты не один. Что-то рядом.",
-      en: "A moment suspended between worlds. The air grows thin. Silence deepens. Shadows listen. You are not alone. Something is near.",
+      ru: "Тишина пустой комнаты. Запах старых страниц и дыма. Ожидание ответа, который может никогда не прийти.",
+      en: "The silence of an empty room. The smell of old pages and smoke. Waiting for an answer that may never come.",
     },
     tagline: { ru: "Голос из пустоты", en: "A voice from the void" },
     memoryFragments: {
@@ -85,8 +85,8 @@ export const perfumes: Perfume[] = [
       { key: "freshness", label: { ru: "Свежесть", en: "Freshness" }, value: 87 },
     ],
     description: {
-      ru: "Солнце на коже после дождя. Зелёные листья, прохладный воздух и запах далёких цветов. Воспоминание о месте, где ты никогда не был, но всегда мечтал оказаться.",
-      en: "Sun on your skin after the rain. Green leaves, cool air, and the smell of distant blooms. A memory of somewhere you've never been, but always longed for.",
+      ru: "Летний день, который остался в памяти навсегда. Свет сквозь листья, запах дождя на тёплой земле. Момент чистого счастья.",
+      en: "A summer day that remained in memory forever. Light through the leaves, the smell of rain on warm earth. A moment of pure happiness.",
     },
     tagline: { ru: "Свет, который не гаснет", en: "Light that never fades" },
     memoryFragments: {
@@ -119,8 +119,8 @@ export const perfumes: Perfume[] = [
       { key: "strength", label: { ru: "Сила", en: "Strength" }, value: 76 },
     ],
     description: {
-      ru: "Горячий пар. Холодное погружение. Запах берёзы, смолы и дыма, прилипающий к коже и памяти. Возвращение к чему-то древнему, настоящему. Ты уходишь легче, чем пришёл.",
-      en: "Hot steam. Cold plunge. The scent of birch, resin and smoke clings to skin and memory. A return to something ancient, something real. You leave lighter than before.",
+      ru: "Жар, очищающий разум. Запах хвои и раскалённых камней. Глубокий вдох, возвращающий к истокам.",
+      en: "Heat that clears the mind. The smell of pine needles and hot stones. A deep breath returning to the roots.",
     },
     tagline: { ru: "Очищение огнём", en: "Purified by fire" },
     memoryFragments: {
@@ -154,8 +154,8 @@ export const perfumes: Perfume[] = [
       { key: "clarity", label: { ru: "Ясность", en: "Clarity" }, value: 90 },
     ],
     description: {
-      ru: "Ощущение начала заново. Всё чисто, всё просто. Воздух как лёд, ткань как облака. Рутина, которая ощущается как забота о себе.",
-      en: "The feeling of starting over. Everything is clean, everything is simple. Air like ice, cloth like clouds. A routine that feels like self-care.",
+      ru: "Простые движения, приносящие покой. Запах чистоты и холодного воздуха. Повседневность как медитация.",
+      en: "Simple movements bringing peace. The smell of cleanliness and cold air. Everyday life as meditation.",
     },
     tagline: { ru: "Покой в простом", en: "Peace in the ordinary" },
     memoryFragments: {
@@ -188,8 +188,8 @@ export const perfumes: Perfume[] = [
       { key: "nostalgia", label: { ru: "Ностальгия", en: "Nostalgia" }, value: 74 },
     ],
     description: {
-      ru: "Искусственный кайф. Электрический, холодный и сладкий. Создан из желания и синтетических грёз. Ненастоящий, но незабываемый.",
-      en: "An artificial high. Electric, cold, and sweet. Built from desire and synthetic dreams. Not real, but unforgettable.",
+      ru: "Искусственный свет неона. Сладкий, токсичный аромат ночи. Чувство, что всё возможно прямо сейчас.",
+      en: "Artificial neon light. Sweet, toxic scent of the night. The feeling that everything is possible right now.",
     },
     tagline: { ru: "Сладкий яд настоящего", en: "Sweet poison of the now" },
     memoryFragments: {
@@ -222,8 +222,8 @@ export const perfumes: Perfume[] = [
       { key: "intensity", label: { ru: "Интенсивность", en: "Intensity" }, value: 88 },
     ],
     description: {
-      ru: "Кайф, который не проходит. Воздушный, но тяжёлый. Сладкий дым в пентхаусе. Ты не пытаешься быть замеченным — ты просто есть. Мир внизу тих.",
-      en: "A high that doesn't fade. Airy yet heavy. Sweet smoke in a penthouse. You're not trying to be seen — you just are. The world below is quiet.",
+      ru: "Взгляд сверху вниз. Плотный дым и дорогая замша. Уверенность, граничащая с безрассудством.",
+      en: "Looking down from above. Dense smoke and expensive suede. Confidence bordering on recklessness.",
     },
     tagline: { ru: "Выше всех в комнате", en: "Highest in the room" },
     memoryFragments: {
@@ -256,8 +256,8 @@ export const perfumes: Perfume[] = [
       { key: "nostalgia", label: { ru: "Ностальгия", en: "Nostalgia" }, value: 65 },
     ],
     description: {
-      ru: "Бледная вуаль между тобой и всем остальным. Холодный воздух, сырая земля и утешение быть невидимым. Для моментов, когда тишина кажется единственной правдой.",
-      en: "A pale veil between you and everything else. Cold air, damp earth, and the comfort of being unseen. For moments when silence feels like the only truth.",
+      ru: "Белая пелена, скрывающая мир. Холод, проникающий под кожу. Идеальное укрытие от всего.",
+      en: "A white veil hiding the world. Cold penetrating under the skin. A perfect hideout from everything.",
     },
     tagline: { ru: "Там, где тебя не найдут", en: "Where they won't find you" },
     memoryFragments: {
@@ -290,8 +290,8 @@ export const perfumes: Perfume[] = [
       { key: "darkness", label: { ru: "Тьма", en: "Darkness" }, value: 87 },
     ],
     description: {
-      ru: "Аромат, который командует. Богатый. Интенсивный. Неприкасаемый. Он не ищет внимания — он требует преданности. За короной — одиночество. За властью — голод.",
-      en: "A scent that commands. Rich. Intense. Untouchable. It doesn't seek attention — it demands devotion. Behind the crown is solitude. Behind the power is hunger.",
+      ru: "Корона из золота и шипов. Тяжёлый взгляд. Запах власти, кожи и сладкой крови.",
+      en: "A crown of gold and thorns. A heavy gaze. The smell of power, leather, and sweet blood.",
     },
     tagline: { ru: "Власть — это аромат", en: "Power is a scent" },
     memoryFragments: {
@@ -324,8 +324,8 @@ export const perfumes: Perfume[] = [
       { key: "pleasure", label: { ru: "Удовольствие", en: "Pleasure" }, value: 85 },
     ],
     description: {
-      ru: "Прекрасная зависимость. Сладкая, тёплая и опасно интимная. Прилипает к коже как секрет, который слишком долго хранили. Чем больше у тебя есть, тем больше тебе нужно. Ты не носишь её. Она носит тебя.",
-      en: "A beautiful addiction. Sweet, warm, and dangerously intimate. It clings to the skin like a secret kept for too long. The more you have, the more you need. You don't wear it. It wears you.",
+      ru: "Отражение, от которого невозможно оторваться. Сладкий яд самовлюблённости. Идеальная зависимость.",
+      en: "A reflection you can't look away from. The sweet poison of narcissism. A perfect addiction.",
     },
     tagline: { ru: "Влюблён в себя навсегда", en: "In love with yourself forever" },
     memoryFragments: {
@@ -359,8 +359,8 @@ export const perfumes: Perfume[] = [
       { key: "warmth", label: { ru: "Тепло", en: "Warmth" }, value: 64 },
     ],
     description: {
-      ru: "Воспоминание, которое держится как последний свет долгого летнего дня. Тепло солнца на коже, запах перезрелых фруктов, далёкий смех. Ты почти чувствуешь, как оно ускользает.",
-      en: "A memory that lingers like the last light of a long summer day. Warmth of sun on skin, the smell of overripe fruit, distant laughter. You can almost feel it slipping away.",
+      ru: "Воздух густой от влажности. Листья чёрной смородины пачкают пальцы. Старые песни из треснувшего динамика. Всё кажется бесконечным.",
+      en: "The air is thick with humidity. Blackcurrant leaves stain your fingers. Old songs on a cracked speaker. Everything feels infinite.",
     },
     tagline: { ru: "Лето, которое не кончается", en: "The summer that never ended" },
     memoryFragments: {
