@@ -39,6 +39,7 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
 
   // Bots: fill the hidden field or submit instantly. Pretend success so they don't retry.
   if (str(p.website, 200) || (typeof p.elapsedMs === "number" && p.elapsedMs < 1500)) {
+    console.warn("[fragrance-request] dropped as spam", { honeypot: !!str(p.website, 200), elapsedMs: p.elapsedMs });
     return { status: 200, body: { ok: true, delivered: [] } };
   }
 
@@ -110,10 +111,13 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
   if (delivered.length) return { status: 200, body: { ok: true, delivered } };
 
   const configured = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) || !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!configured && env.NODE_ENV !== "production") {
+  // Only `vite dev` passes NODE_ENV=development. Hosted functions (Netlify doesn't set NODE_ENV at
+  // runtime) must never fake a success when the keys are missing.
+  if (!configured && env.NODE_ENV === "development") {
     // Local development without keys: show the request in the terminal instead
     console.log("[fragrance-request] (no TELEGRAM_* / SUPABASE_* configured)", data);
     return { status: 200, body: { ok: true, delivered: ["console"] } };
   }
+  if (!configured) console.error("[fragrance-request] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are not visible to this function");
   return { status: configured ? 502 : 500, body: { ok: false, error: configured ? "delivery_failed" : "not_configured" } };
 }
