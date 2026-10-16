@@ -189,7 +189,8 @@ export class NebulaEngine {
   private pointer = new THREE.Vector2(9, 9);
   private parallax = new THREE.Vector2();
   private hovered: Node | null = null;
-  private clock = new THREE.Clock();
+  private lastFrame = performance.now();
+  private delta() { const now = performance.now(); const d = (now - this.lastFrame) / 1000; this.lastFrame = now; return d; }
   private raf = 0;
   private flight: { curve: THREE.CatmullRomCurve3; lookFrom: THREE.Vector3; lookTo: THREE.Vector3; through: boolean; t: number; dur: number; done: () => void; gate?: { node: Node; entering: boolean } } | null = null;
   private look = new THREE.Vector3();
@@ -551,8 +552,8 @@ export class NebulaEngine {
   private time = 0;
   private tick = () => {
     this.raf = requestAnimationFrame(this.tick);
-    if (!this.visible) { this.clock.getDelta(); return; }
-    this.step(Math.min(this.clock.getDelta(), 0.05));
+    if (!this.visible) { this.delta(); return; }
+    this.step(Math.min(this.delta(), 0.05));
   };
 
   /** Dev-only: advance the simulation by `seconds` without waiting for frames. */

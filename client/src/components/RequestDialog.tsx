@@ -26,14 +26,18 @@ export default function RequestDialog({
   const [error, setError] = useState<string | null>(null);
   const [trap, setTrap] = useState("");
   const openedAt = useRef(0);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  // Depends on `open` only: worlds pass a fresh onClose on every render (King re-renders every 0.9 s),
+  // which used to reset openedAt so every real request looked "too fast" and was dropped as spam.
   useEffect(() => {
     if (!open) return;
     openedAt.current = Date.now();
     setError(null);
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
 
   const ERRORS: Record<string, [string, string]> = {
@@ -108,7 +112,7 @@ export default function RequestDialog({
               </label>
             ))}
             {/* honeypot: hidden from people, irresistible to bots */}
-            <input value={trap} onChange={(e) => setTrap(e.target.value)} name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+            <input value={trap} onChange={(e) => setTrap(e.target.value)} name="hp_x7" tabIndex={-1} autoComplete="off" aria-hidden="true"
               style={{ position: "absolute", left: -10000, width: 1, height: 1, opacity: 0 }} />
             <p style={{ ...skin.label, textTransform: "none", letterSpacing: 0, opacity: 0.75 }}>{t("Telegram, телефон или email — хотя бы что-то одно.", "Telegram, phone or email — at least one.")}</p>
             {error && <p role="alert" style={{ ...skin.label, textTransform: "none", letterSpacing: 0, color: skin.accent, opacity: 1 }}>{error}</p>}

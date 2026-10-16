@@ -211,13 +211,15 @@ export default function Bottle3D({
     io.observe(host);
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const clock = new THREE.Clock();
+    let last = performance.now(), elapsed = 0;
+    const delta = () => { const now = performance.now(); const d = (now - last) / 1000; last = now; return d; };
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      if (!visible) { clock.getDelta(); return; }
-      const dt = Math.min(clock.getDelta(), 0.05);
-      const t = clock.elapsedTime;
+      if (!visible) { delta(); return; }
+      const dt = Math.min(delta(), 0.05);
+      elapsed += dt;
+      const t = elapsed;
       if (!dragging) {
         vel *= 0.94;
         yaw += vel + (reduced ? 0 : spin * dt);

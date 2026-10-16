@@ -229,7 +229,10 @@ function vitePluginRequestApi(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginRequestApi()];
+// Manus editor helpers are only useful inside Manus during development; keep them out of the
+// production bundle (the runtime registers an `unload` listener that browsers block).
+const isBuild = process.argv.includes("build");
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), ...(isBuild ? [] : [vitePluginManusRuntime(), vitePluginManusDebugCollector()]), vitePluginStorageProxy(), vitePluginRequestApi()];
 
 export default defineConfig({
   plugins,
