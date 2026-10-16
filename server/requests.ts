@@ -23,7 +23,7 @@ export interface RequestPayload {
 
 export interface Result {
   status: number;
-  body: { ok: boolean; error?: string; delivered?: string[] };
+  body: { ok: boolean; error?: string; delivered?: string[]; detail?: string };
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -58,6 +58,7 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
 
   const delivered: string[] = [];
   const failures: string[] = [];
+  let telegramDetail = ""; // Telegram's own reason ("Unauthorized", "Bad Request: chat not found") — safe to show, no secrets
 
   // 1) Telegram
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
@@ -79,7 +80,11 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
         body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: lines.join("\n"), parse_mode: "HTML", disable_web_page_preview: true }),
       });
       if (r.ok) delivered.push("telegram");
-      else failures.push(`telegram ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      else {
+        const text = (await r.text()).slice(0, 200);
+        failures.push(`telegram ${r.status}: ${text}`);
+        try { telegramDetail = `telegram ${r.status}: ${JSON.parse(text).description ?? ""}`; } catch { telegramDetail = `telegram ${r.status}`; }
+      }
     } catch (e) {
       failures.push(`telegram: ${(e as Error).message}`);
     }
@@ -119,5 +124,5 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
     return { status: 200, body: { ok: true, delivered: ["console"] } };
   }
   if (!configured) console.error("[fragrance-request] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are not visible to this function");
-  return { status: configured ? 502 : 500, body: { ok: false, error: configured ? "delivery_failed" : "not_configured" } };
+  return { status: configured ? 502 : 500, body: { ok: false, error: configured ? "delivery_failed" : "not_configured", ...(telegramDetail ? { detail: telegramDetail } : {}) } };
 }
