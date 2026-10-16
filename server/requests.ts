@@ -38,7 +38,7 @@ export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise
   const p = (raw && typeof raw === "object" ? raw : {}) as RequestPayload;
 
   // Bots: fill the hidden field or submit instantly. Pretend success so they don't retry.
-  if (str(p.website, 200) || (typeof p.elapsedMs === "number" && p.elapsedMs < 1500)) {
+  if (str(p.website, 200) || (typeof p.elapsedMs === "number" && p.elapsedMs < 800)) {
     console.warn("[fragrance-request] dropped as spam", { honeypot: !!str(p.website, 200), elapsedMs: p.elapsedMs });
     return { status: 200, body: { ok: true, delivered: [] } };
   }

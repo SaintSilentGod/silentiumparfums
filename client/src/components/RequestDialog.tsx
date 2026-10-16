@@ -61,6 +61,11 @@ export default function RequestDialog({
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok || !body.ok) { setError(t(...(ERRORS[body.error as string] ?? fallback))); return; }
+      if (Array.isArray(body.delivered) && body.delivered.length === 0) {
+        console.warn("[request] the server accepted the request but delivered it nowhere", body);
+        setError(t(...fallback));
+        return;
+      }
       setSent(true);
       setData({ name: "", telegram: "", phone: "", email: "" });
       setTimeout(() => { onClose(); setSent(false); }, 2800);
@@ -112,8 +117,9 @@ export default function RequestDialog({
               </label>
             ))}
             {/* honeypot: hidden from people, irresistible to bots */}
-            <input value={trap} onChange={(e) => setTrap(e.target.value)} name="hp_x7" tabIndex={-1} autoComplete="off" aria-hidden="true"
-              style={{ position: "absolute", left: -10000, width: 1, height: 1, opacity: 0 }} />
+            <div style={{ display: "none" }} aria-hidden="true">
+              <input value={trap} onChange={(e) => setTrap(e.target.value)} name="hp_x7" tabIndex={-1} autoComplete="off" />
+            </div>
             <p style={{ ...skin.label, textTransform: "none", letterSpacing: 0, opacity: 0.75 }}>{t("Telegram, телефон или email — хотя бы что-то одно.", "Telegram, phone or email — at least one.")}</p>
             {error && <p role="alert" style={{ ...skin.label, textTransform: "none", letterSpacing: 0, color: skin.accent, opacity: 1 }}>{error}</p>}
             <button type="submit" disabled={sending} style={{ marginTop: 6, ...skin.button, opacity: sending ? 0.6 : 1, cursor: sending ? "wait" : "pointer" }}>
