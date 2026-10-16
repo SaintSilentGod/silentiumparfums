@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useParams } from "wouter";
 import { getPerfumeById } from "@/lib/perfumes";
+import { worlds } from "./worlds";
 import { useLang } from "@/contexts/LangContext";
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -73,49 +74,7 @@ function RevealCol({
   );
 }
 
-function WaveformFake({ accentColor }: { accentColor: string }) {
-  const bars = Array.from({ length: 80 }, (_, i) => {
-    const h = 3 + Math.abs(Math.sin(i * 0.35 + 1) * 12) + Math.abs(Math.sin(i * 0.7) * 6);
-    return h;
-  });
-  return (
-    <div className="flex items-center gap-px" style={{ height: "28px" }}>
-      {bars.map((h, i) => (
-        <div key={i} style={{ width: "2px", height: `${h}px`, background: `${accentColor}55`, borderRadius: "1px" }} />
-      ))}
-    </div>
-  );
-}
-
-function WorldMap({ accentColor, location }: { accentColor: string; location: string }) {
-  return (
-    <div style={{
-      position: "relative", height: "110px",
-      background: "rgba(255,255,255,0.02)",
-      border: "0.5px solid rgba(255,255,255,0.06)",
-      overflow: "hidden",
-    }}>
-      <svg viewBox="0 0 400 200" style={{ width: "100%", height: "100%", opacity: 0.22 }}>
-        <path d="M 60 60 Q 80 50 100 55 Q 120 45 140 50 Q 160 55 155 70 Q 150 85 130 90 Q 110 95 90 85 Q 70 80 60 70 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <path d="M 165 55 Q 185 45 210 50 Q 230 48 245 60 Q 255 75 250 90 Q 240 105 220 110 Q 195 115 175 105 Q 160 95 162 75 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <path d="M 250 65 Q 280 55 310 60 Q 340 65 355 80 Q 365 95 355 115 Q 340 130 310 135 Q 280 138 260 125 Q 245 110 248 90 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <path d="M 170 120 Q 185 115 200 120 Q 215 125 210 140 Q 200 155 185 155 Q 170 150 168 135 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <path d="M 80 110 Q 95 105 110 112 Q 120 120 115 135 Q 105 145 90 142 Q 78 135 78 122 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <path d="M 320 130 Q 340 125 355 135 Q 365 148 355 160 Q 340 168 325 162 Q 315 152 318 140 Z" fill="none" stroke={accentColor} strokeWidth="0.8"/>
-        <circle cx="200" cy="90" r="3" fill={accentColor} opacity="0.9"/>
-        <circle cx="200" cy="90" r="8" fill={accentColor} opacity="0.2"/>
-        <circle cx="200" cy="90" r="14" fill={accentColor} opacity="0.07"/>
-      </svg>
-      <div style={{ position: "absolute", bottom: "8px", left: "10px" }}>
-        <p style={{ color: "rgba(232,228,220,0.4)", fontSize: "0.52rem", fontFamily: "'DM Mono', monospace", letterSpacing: "0.12em" }}>
-          {location}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-export default function PerfumePage() {
+function LegacyPerfumePage() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { lang, setLang, t } = useLang();
@@ -212,19 +171,21 @@ export default function PerfumePage() {
       {/* ── SECTION 1: LEFT PANEL + HERO IMAGE ── */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "360px 1fr",
-        minHeight: "100vh",
+        gridTemplateColumns: "minmax(400px, 40%) 1fr",
+        alignItems: "start",
+        width: "100%",
       }}>
         {/* Left sticky panel */}
         <div style={{
           borderRight: "0.5px solid rgba(255,255,255,0.06)",
-          padding: "2.5rem 2rem",
+          padding: "2.5rem 2.5rem 2.5rem 2rem",
+          minWidth: 0,
           display: "flex",
           flexDirection: "column",
           gap: "1.5rem",
           position: "sticky",
           top: "57px",
-          height: "calc(100vh - 57px)",
+          maxHeight: "calc(100vh - 57px)",
           overflowY: "auto",
           scrollbarWidth: "none",
         }}>
@@ -295,12 +256,19 @@ export default function PerfumePage() {
 
         {/* Right: hero image gallery */}
         {(() => {
-          const gallery = perfume.gallery && perfume.gallery.length > 0 ? perfume.gallery : [perfume.heroImage];
+          const extra = perfume.gallery?.filter((src) => src !== perfume.heroImage) ?? [];
+          const gallery = [perfume.heroImage, ...extra];
           const [activeIdx, setActiveIdx] = React.useState(0);
           return (
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {/* Main image */}
-              <div style={{ position: "relative", height: gallery.length > 1 ? "calc(100vh - 57px - 90px)" : "calc(100vh - 57px)", overflow: "hidden" }}>
+            <div key={perfume.id} style={{ display: "flex", flexDirection: "column", width: "100%", minWidth: 0 }}>
+              {/* Main image — native 16:9, no crop */}
+              <div style={{
+                position: "relative",
+                width: "100%",
+                aspectRatio: "16 / 9",
+                background: "#080808",
+                overflow: "hidden",
+              }}>
                 <p className="font-mono-label absolute top-4 left-4 z-10" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
                   VISUAL REFERENCE
                 </p>
@@ -311,14 +279,18 @@ export default function PerfumePage() {
                   key={activeIdx}
                   src={gallery[activeIdx]}
                   alt={`${perfume.name} ${activeIdx + 1}`}
+                  width={1920}
+                  height={1080}
                   style={{
-                    width: "100%", height: "100%",
-                    objectFit: "cover", objectPosition: "center",
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
                     filter: "brightness(0.78) contrast(1.06)",
                     animation: "fadeIn 0.4s ease",
                   }}
                 />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 55%, rgba(8,8,8,0.75) 100%)" }} />
+                <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to bottom, transparent 70%, rgba(8,8,8,0.45) 100%)" }} />
                 {/* Arrow navigation */}
                 {gallery.length > 1 && (
                   <>
@@ -354,24 +326,27 @@ export default function PerfumePage() {
               {/* Thumbnails strip */}
               {gallery.length > 1 && (
                 <div style={{
-                  display: "flex", gap: "4px", height: "86px",
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${gallery.length}, 1fr)`,
+                  gap: "4px",
                   borderTop: "0.5px solid rgba(255,255,255,0.06)",
                   padding: "4px", background: "rgba(8,8,8,0.9)",
-                  overflowX: "auto",
                 }}>
                   {gallery.map((src, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveIdx(i)}
                       style={{
-                        flexShrink: 0, width: "120px", height: "78px",
+                        width: "100%",
+                        aspectRatio: "16 / 9",
                         border: i === activeIdx ? `1px solid ${accentColor}` : "0.5px solid rgba(255,255,255,0.08)",
                         overflow: "hidden", cursor: "pointer", padding: 0,
+                        background: "#080808",
                         transition: "border-color 0.2s ease",
                         opacity: i === activeIdx ? 1 : 0.55,
                       }}
                     >
-                      <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.8)" }} />
+                      <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", filter: "brightness(0.8)" }} />
                     </button>
                   ))}
                 </div>
@@ -382,16 +357,16 @@ export default function PerfumePage() {
         <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
       </div>
 
-      {/* ── SECTION 2: SCENT NOTES + RADAR + DESCRIPTION ── */}
+      {/* ── SECTION 2: SCENT NOTES + RADAR ── */}
       <div>
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
+          gridTemplateColumns: "1fr 1fr",
           borderTop: "0.5px solid rgba(255,255,255,0.06)",
         }}>
           <RevealGridRow>
           {/* Col 1: Scent Notes */}
-          <div style={{ padding: "2rem 1.5rem", borderRight: "0.5px solid rgba(255,255,255,0.06)", minHeight: "520px" }}>
+          <div style={{ padding: "2rem 1.5rem", borderRight: "0.5px solid rgba(255,255,255,0.06)" }}>
               <p className="font-mono-label mb-5" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.55rem" }}>
                 {t("SCENT NOTES", "SCENT NOTES")}
               </p>
@@ -435,7 +410,7 @@ export default function PerfumePage() {
           </div>
 
           {/* Col 2: Emotional Profile */}
-          <div style={{ padding: "2rem 1.5rem", borderRight: "0.5px solid rgba(255,255,255,0.06)", minHeight: "520px" }}>
+          <div style={{ padding: "2rem 1.5rem" }}>
               <p className="font-mono-label mb-4" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.55rem" }}>
                 {t("EMOTIONAL PROFILE", "EMOTIONAL PROFILE")} ✦
               </p>
@@ -459,42 +434,13 @@ export default function PerfumePage() {
                 ))}
               </div>
           </div>
-
-          {/* Col 3: Description + World Map + Location */}
-          <div style={{ padding: "2rem 1.5rem", minHeight: "520px", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              <div>
-                <p className="font-mono-label mb-2" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.55rem" }}>
-                  {t("DESCRIPTION", "DESCRIPTION")}
-                </p>
-                <p style={{ color: "rgba(232,228,220,0.55)", fontSize: "0.78rem", fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", lineHeight: 1.8 }}>
-                  {lang === "ru" ? perfume.description.ru : perfume.description.en}
-                </p>
-              </div>
-              <div>
-                <p className="font-mono-label mb-2" style={{ color: "rgba(232,228,220,0.25)", fontSize: "0.5rem" }}>
-                  {t("WORLD MANIFESTATION", "WORLD MANIFESTATION")}
-                </p>
-                <WorldMap accentColor={accentColor} location={lang === "ru" ? perfume.origin.location.ru : perfume.origin.location.en} />
-              </div>
-              <div style={{ borderTop: "0.5px solid rgba(255,255,255,0.06)", paddingTop: "1rem" }}>
-                <p className="font-mono-label mb-2" style={{ color: "rgba(232,228,220,0.25)", fontSize: "0.5rem" }}>
-                  {t("PHYSICAL LOCATION", "PHYSICAL LOCATION")}
-                </p>
-                <div style={{ border: "0.5px solid rgba(255,255,255,0.08)", padding: "0.7rem" }}>
-                  <p style={{ color: accentColor, fontSize: "0.63rem", fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>{perfume.origin.coords}</p>
-                  <p style={{ color: "rgba(232,228,220,0.45)", fontSize: "0.63rem", fontFamily: "'DM Mono', monospace" }}>
-                    {lang === "ru" ? perfume.origin.location.ru : perfume.origin.location.en}
-                  </p>
-                </div>
-              </div>
-          </div>
           </RevealGridRow>
         </div>
 
-        {/* ── SECTION 3: MEMORY FRAGMENTS + AMBIENT + REQUEST ── */}
+        {/* ── SECTION 3: MEMORY FRAGMENTS + REQUEST ── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
+          gridTemplateColumns: "1fr 1fr",
           borderTop: "0.5px solid rgba(255,255,255,0.06)",
         }}>
           <RevealGridRow>
@@ -512,23 +458,6 @@ export default function PerfumePage() {
               <p className="font-mono-label mt-4" style={{ color: "rgba(232,228,220,0.2)", fontSize: "0.48rem" }}>
                 {t("FRAGMENTS RECOVERED", "FRAGMENTS RECOVERED")}: {perfume.memoryFragments.ru.length} / 12
               </p>
-          </div>
-
-          {/* Ambient Memory */}
-          <div style={{ padding: "2rem 1.5rem", borderRight: "0.5px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <p className="font-mono-label" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
-                {t("AMBIENT MEMORY", "AMBIENT MEMORY")}
-              </p>
-              <WaveformFake accentColor={accentColor} />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: "rgba(232,228,220,0.25)", fontSize: "0.75rem" }}>▶</span>
-                  <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.5rem" }}>
-                    {t("PLAY AMBIENCE", "PLAY AMBIENCE")}
-                  </span>
-                </div>
-                <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.2)", fontSize: "0.5rem" }}>03:28</span>
-              </div>
           </div>
 
           {/* Request */}
@@ -677,4 +606,14 @@ export default function PerfumePage() {
       )}
     </div>
   );
+}
+
+// Fragrances with their own world get it; the rest keep the original template.
+export default function PerfumePage() {
+  const params = useParams<{ id: string }>();
+  const perfume = getPerfumeById(params.id);
+  const World = perfume ? worlds[perfume.id] : undefined;
+  useEffect(() => { window.scrollTo(0, 0); }, [params.id]);
+  if (perfume && World) return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#080808" }} />}><World key={perfume.id} perfume={perfume} /></React.Suspense>;
+  return <LegacyPerfumePage key={params.id} />;
 }

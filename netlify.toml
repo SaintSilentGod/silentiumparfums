@@ -1,0 +1,13 @@
+[build]
+  command = "vite build"
+  publish = "dist/public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Client-side routing: every page is index.html (functions on /api/* are matched first)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

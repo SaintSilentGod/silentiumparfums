@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // =============================================================================
@@ -203,7 +203,33 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+// =============================================================================
+// /api/request in `vite dev` — the same handler the Vercel / Netlify functions use
+// =============================================================================
+function vitePluginRequestApi(): Plugin {
+  return {
+    name: "silentium-request-api",
+    configureServer(server: ViteDevServer) {
+      const env = { ...loadEnv(server.config.mode, PROJECT_ROOT, ""), NODE_ENV: "development" };
+      server.middlewares.use("/api/request", (req, res) => {
+        if (req.method !== "POST") { res.statusCode = 405; res.end(); return; }
+        let raw = "";
+        req.on("data", (c) => { raw += c; if (raw.length > 16_000) req.destroy(); });
+        req.on("end", async () => {
+          const mod = await server.ssrLoadModule(path.join(PROJECT_ROOT, "server", "requests.ts"));
+          let body: unknown = null;
+          try { body = JSON.parse(raw); } catch { /* handled as invalid below */ }
+          const result = await mod.handleFragranceRequest(body, env);
+          res.statusCode = result.status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(result.body));
+        });
+      });
+    },
+  };
+}
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginRequestApi()];
 
 export default defineConfig({
   plugins,
