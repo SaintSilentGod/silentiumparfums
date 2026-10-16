@@ -397,6 +397,7 @@ export default function Layering() {
             <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div style={{ width: 220 }}><MergeVisual /></div>
               <p key={lineIdx} className="lay-line" style={{ fontSize: 24, fontStyle: "italic", color: C.dim }}>{LOADING_LINES[lang][lineIdx]}</p>
+              <p style={{ ...mono, fontSize: 11, letterSpacing: ".15em", color: C.faint }}>{t("ОБЫЧНО ЭТО ЗАНИМАЕТ 30–60 СЕКУНД", "THIS USUALLY TAKES 30–60 SECONDS")}</p>
             </div>
           )}
         </section>

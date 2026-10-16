@@ -4,20 +4,23 @@
 // built only from the user's wardrobe plus one bonus combination with a Silentium fragrance,
 // stores the result and returns it. Failed generations are not counted.
 //
-// Secrets: OPENROUTER_API_KEY (required), OPENROUTER_MODEL (optional), LAYERING_IP_SALT (optional),
-//          SITE_URL (optional, for OpenRouter attribution and CORS)
+// Secrets: OPENROUTER_API_KEY (required), OPENROUTER_MODEL / OPENROUTER_FALLBACK_MODEL (optional),
+//          LAYERING_IP_SALT (optional), SITE_URL (optional, OpenRouter attribution),
+//          LAYERING_TEST_KEY (optional — lets the developer test prompts without signing in; unset it after)
 
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { SILENTIUM } from "./silentium.ts";
 
-const MODEL = Deno.env.get("OPENROUTER_MODEL") || "anthropic/claude-sonnet-5.5";
+// Cheap, multilingual, supports structured output. OpenRouter falls back to the second model if the first fails.
+const MODEL = Deno.env.get("OPENROUTER_MODEL") || "z-ai/glm-5.3-flash";
+const FALLBACK_MODEL = Deno.env.get("OPENROUTER_FALLBACK_MODEL") || "deepseek/deepseek-v4-flash";
 const USER_LIMIT = 3;
 const IP_LIMIT = 6; // per day — stops one person farming generations with many Google accounts
 const SITE_URL = Deno.env.get("SITE_URL") || "https://silentiumparfums.netlify.app";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-layering-test",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
@@ -95,7 +98,7 @@ Craft rules you follow:
 
 Use your own knowledge of each fragrance's notes and character. If you don't recognise a fragrance, infer cautiously from its name and brand, and prefer combinations built on fragrances you do know.
 
-Write in ${language}, in the voice of the house: evocative, sensory, precise, never generic marketing. Each text field is 1–3 sentences.
+Write in ${language}, in the voice of the house: evocative, sensory, precise, never generic marketing.${lang === "ru" ? " Write natural, literary Russian — no calques from English, no anglicisms where a Russian word exists." : ""} Keep every text field to one or two sentences.
 
 Silentium's own fragrances (for the bonus pairing only):
 ${JSON.stringify(SILENTIUM)}`;
@@ -107,7 +110,7 @@ function userPrompt(items: Item[], lang: "ru" | "en") {
 ${list}
 
 Give me:
-1. "combos": 3 or 4 layering combinations built ONLY from fragrances in my wardrobe (use their names exactly as written above in "perfumes[].name", without the brand). Each with: a poetic "title", the "idea" (bridge or contrast), "perfumes" in application order with role (base/middle/top), number of sprays and where to apply, "application" technique, "result" — how the blend smells over time, "mood", "occasion", "season", "why" it works, and "intensity" from 1 (skin scent) to 5 (loud).
+1. "combos": exactly 3 layering combinations built ONLY from fragrances in my wardrobe (use their names exactly as written above in "perfumes[].name", without the brand). Each with: a poetic "title", the "idea" (bridge or contrast), "perfumes" in application order with role (base/middle/top), number of sprays and where to apply, "application" technique, "result" — how the blend smells over time, "mood", "occasion", "season", "why" it works, and "intensity" from 1 (skin scent) to 5 (loud).
 2. "silentium": ONE bonus pairing — the Silentium fragrance (by its "id") that would best complete my wardrobe, which of MY fragrances to pair it with ("pairWith", exact name), how to apply it, what it gives, and why.
 3. "intro": one or two sentences reading my wardrobe as a personality.
 Language: ${lang === "ru" ? "Russian" : "English"}.`;
@@ -134,12 +137,16 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return json({ error: "not_configured" }, 500);
 
+  // Developer test mode: valid only while the LAYERING_TEST_KEY secret exists; nothing is stored or counted
+  const testKey = Deno.env.get("LAYERING_TEST_KEY");
+  const isTest = !!testKey && req.headers.get("x-layering-test") === testKey;
+
   // Who is asking
   const authHeader = req.headers.get("Authorization") ?? "";
   const url = Deno.env.get("SUPABASE_URL")!;
   const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return json({ error: "auth_required" }, 401);
+  const { data: { user } } = isTest ? { data: { user: null } } : await userClient.auth.getUser();
+  if (!user && !isTest) return json({ error: "auth_required" }, 401);
 
   // What they own
   const body = await req.json().catch(() => null) as { wardrobe?: unknown; lang?: unknown } | null;
@@ -164,8 +171,8 @@ Deno.serve(async (req) => {
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
   const ipHash = ip ? await sha256(`${ip}:${Deno.env.get("LAYERING_IP_SALT") ?? "silentium"}`) : null;
-  const { data: genId, error: claimError } = await admin.rpc("claim_layering_generation", {
-    p_user: user.id, p_ip_hash: ipHash, p_lang: lang, p_wardrobe: items, p_user_limit: USER_LIMIT, p_ip_limit: IP_LIMIT,
+  const { data: genId, error: claimError } = isTest ? { data: null, error: null } : await admin.rpc("claim_layering_generation", {
+    p_user: user!.id, p_ip_hash: ipHash, p_lang: lang, p_wardrobe: items, p_user_limit: USER_LIMIT, p_ip_limit: IP_LIMIT,
   });
   if (claimError) {
     const msg = claimError.message ?? "";
@@ -175,62 +182,67 @@ Deno.serve(async (req) => {
     return json({ error: "server_error" }, 500);
   }
 
+  let usedModel = MODEL;
   const fail = async (error: string, detail: string) => {
-    await admin.from("layering_generations").update({ status: "failed", error: detail.slice(0, 500), model: MODEL }).eq("id", genId);
+    if (!isTest) await admin.from("layering_generations").update({ status: "failed", error: detail.slice(0, 1500), model: usedModel }).eq("id", genId);
     console.error(error, detail);
-    return json({ error }, 502);
+    return json(isTest ? { error, detail: detail.slice(0, 1500) } : { error }, 502);
   };
 
-  // Ask the model
-  let content = "";
-  try {
-    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": SITE_URL,
-        "X-Title": "Silentium layering atelier",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 4000,
-        temperature: 0.8,
-        messages: [
-          { role: "system", content: systemPrompt(lang) },
-          { role: "user", content: userPrompt(items, lang) },
-        ],
-        response_format: { type: "json_schema", json_schema: { name: "layering", strict: true, schema: RESULT_SCHEMA } },
-      }),
-    });
-    if (!r.ok) return await fail("generation_failed", `openrouter ${r.status}: ${(await r.text()).slice(0, 300)}`);
-    const data = await r.json();
-    content = data?.choices?.[0]?.message?.content ?? "";
-  } catch (e) {
-    return await fail("generation_failed", `openrouter: ${(e as Error).message}`);
+  // Ask the model (one retry if the answer can't be parsed)
+  type Parsed = { intro: string; combos: { perfumes: { name: string }[] }[]; silentium: { id: string; pairWith: string } };
+  let result: Parsed | null = null;
+  let lastProblem = "";
+  for (let attempt = 0; attempt < 2 && !result; attempt++) {
+    let content = "";
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": SITE_URL,
+          "X-Title": "Silentium layering atelier",
+        },
+        body: JSON.stringify({
+          models: [MODEL, FALLBACK_MODEL],
+          max_tokens: 12000,
+          temperature: 0.8,
+          messages: [
+            { role: "system", content: systemPrompt(lang) },
+            { role: "user", content: userPrompt(items, lang) },
+          ],
+          response_format: { type: "json_schema", json_schema: { name: "layering", strict: true, schema: RESULT_SCHEMA } },
+        }),
+      });
+      if (!r.ok) { lastProblem = `openrouter ${r.status}: ${(await r.text()).slice(0, 400)}`; continue; }
+      const data = await r.json();
+      usedModel = data?.model ?? usedModel;
+      content = data?.choices?.[0]?.message?.content ?? "";
+      const finish = data?.choices?.[0]?.finish_reason;
+      try {
+        result = parseModelJson(content);
+      } catch {
+        lastProblem = `bad json (finish=${finish}, model=${usedModel}, ${content.length} chars): …${content.slice(-300)}`;
+      }
+    } catch (e) {
+      lastProblem = `openrouter: ${(e as Error).message}`;
+    }
   }
+  if (!result) return await fail("generation_failed", lastProblem);
 
   // Validate: combos may only use what the user owns; the bonus must be a real Silentium fragrance
-  let result: {
-    intro: string;
-    combos: { perfumes: { name: string }[] }[];
-    silentium: { id: string; pairWith: string };
-  };
-  try {
-    result = parseModelJson(content);
-  } catch {
-    return await fail("generation_failed", `bad json: ${content.slice(0, 300)}`);
-  }
   const owned = items.map((i) => norm(i.name));
   const isOwned = (n: string) => { const k = norm(n); return owned.some((o) => o === k || o.includes(k) || k.includes(o)); };
   result.combos = (result.combos ?? []).filter((c) => c.perfumes?.length >= 2 && c.perfumes.every((p) => isOwned(p.name))).slice(0, 4);
-  if (!result.combos.length) return await fail("generation_failed", `no valid combos: ${content.slice(0, 300)}`);
+  if (!result.combos.length) return await fail("generation_failed", `no valid combos (model=${usedModel}): ${JSON.stringify(result).slice(0, 400)}`);
   if (!SILENTIUM.some((s) => s.id === result.silentium?.id)) {
     // keep the result, just drop an invalid bonus
     (result as { silentium: unknown }).silentium = null;
   }
 
-  await admin.from("layering_generations").update({ status: "done", result, model: MODEL }).eq("id", genId);
-  const { count } = await admin.from("layering_generations").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "failed");
+  if (isTest) return json({ result, model: usedModel });
+  await admin.from("layering_generations").update({ status: "done", result, model: usedModel }).eq("id", genId);
+  const { count } = await admin.from("layering_generations").select("id", { count: "exact", head: true }).eq("user_id", user!.id).neq("status", "failed");
   return json({ id: genId, result, remaining: Math.max(0, USER_LIMIT - (count ?? USER_LIMIT)) });
 });
