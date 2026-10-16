@@ -10,6 +10,8 @@ import { lazy, Suspense } from "react";
 
 // The map pulls in three.js; load it only when /map is opened
 const NebulaMap = lazy(() => import("./pages/NebulaMap"));
+const Layering = lazy(() => import("./pages/Layering"));
+const LayeringRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#07060a" }} />}><Layering /></Suspense>;
 const MapRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#030208" }} />}><NebulaMap /></Suspense>;
 import PerfumePage from "./pages/PerfumePage";
 
@@ -18,6 +20,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/map" component={MapRoute} />
+      <Route path="/layering" component={LayeringRoute} />
       <Route path="/perfume/:id" component={PerfumePage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

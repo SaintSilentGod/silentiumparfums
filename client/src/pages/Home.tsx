@@ -244,6 +244,14 @@ export default function Home() {
           >
             {t("Найти свой аромат", "Find your scent")}
           </button>
+          <button
+            onClick={() => navigate("/layering")}
+            style={{ display: "block", margin: "1.4rem auto 0", color: "rgba(232,228,220,0.45)", fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", letterSpacing: "0.25em", textTransform: "uppercase", transition: "color .3s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#c9a96e"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(232,228,220,0.45)"; }}
+          >
+            {t("Ателье лейеринга →", "Layering atelier →")}
+          </button>
         </div>
       </div>
 
