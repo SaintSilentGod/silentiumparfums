@@ -29,7 +29,12 @@ export interface Result {
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export async function handleFragranceRequest(raw: unknown, env: Env): Promise<Result> {
+// Dashboard values often get pasted with stray spaces or quotes ("123:ABC" ) — Telegram then rejects them
+const clean = (v: string | undefined) => v?.trim().replace(/^["'`]+|["'`]+$/g, "").trim() || undefined;
+
+export async function handleFragranceRequest(raw: unknown, rawEnv: Env): Promise<Result> {
+  const env: Env = { ...rawEnv };
+  for (const k of ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_REQUESTS_TABLE"]) env[k] = clean(rawEnv[k]);
   const p = (raw && typeof raw === "object" ? raw : {}) as RequestPayload;
 
   // Bots: fill the hidden field or submit instantly. Pretend success so they don't retry.
