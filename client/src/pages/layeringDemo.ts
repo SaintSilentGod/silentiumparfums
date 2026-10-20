@@ -17,3 +17,11 @@ export const DEMO_RESULT: import("./Layering").LayeringResult = {
   ],
   silentium: { id: "silent-fog", title: "Дым, который рассеивается", pairWith: "Tobacco Oud", application: "Два пшика Tobacco Oud, сверху один Silent Fog.", result: "Табак становится влажным и холодным, как утро после костра.", why: "Вашей полке не хватает воздуха — Silent Fog добавляет озон и дождь поверх плотных баз." },
 };
+
+export const DEMO_SCAN: { brand: string; name: string; confidence: "high" | "medium" | "low" }[] = [
+  { brand: "Tom Ford", name: "Tobacco Vanille", confidence: "high" },
+  { brand: "Dior", name: "Sauvage", confidence: "high" },
+  { brand: "", name: "Laundry Routine", confidence: "high" },
+  { brand: "Le Labo", name: "Santal 33", confidence: "medium" },
+  { brand: "Byredo", name: "Gypsy Water", confidence: "low" },
+];

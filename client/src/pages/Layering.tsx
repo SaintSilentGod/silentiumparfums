@@ -26,6 +26,38 @@ export interface LayeringResult { intro: string; combos: Combo[]; silentium: { i
 
 const itemKey = (i: WardrobeItem) => normalize(`${i.brand} ${i.name}`);
 
+// A bottle read from a photo → our canonical spelling (Silentium first, then the catalogue)
+function matchScanned(brand: string, name: string): WardrobeItem {
+  const n = normalize(name), b = normalize(brand);
+  const own = perfumes.find((p) => normalize(p.name) === n && (!b || b === "silentium"));
+  if (own) return { brand: "Silentium", name: own.name, silentiumId: own.id };
+  const hit = searchCatalog(`${brand} ${name}`, 1)[0];
+  if (hit && normalize(hit.name) === n) return { brand: hit.brand, name: hit.name };
+  return { brand: brand.trim(), name: name.trim() };
+}
+
+// Downscale to ≤1600 px JPEG so uploads are small and cheap (EXIF rotation is applied by the browser)
+function photoToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * k);
+      c.height = Math.round(img.naturalHeight * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("unreadable image")); };
+    img.src = url;
+  });
+}
+
+interface ScanFound { item: WardrobeItem; confidence: "high" | "medium" | "low"; checked: boolean; owned: boolean }
+interface ScanState { preview: string; status: "scanning" | "done" | "error"; error?: string; found: ScanFound[] }
+
 // Deterministic colour for any fragrance: Silentium uses its own liquid colour
 function colorFor(item: { name: string; silentiumId?: string }) {
   if (item.silentiumId && BOTTLE_COLORS[item.silentiumId]) return BOTTLE_COLORS[item.silentiumId].liquid;
@@ -174,6 +206,46 @@ export default function Layering() {
   };
   const manualItem = (q: string): WardrobeItem => ({ brand: "", name: q.trim().slice(0, 80) });
 
+  // ── photo of the shelf ──
+  const [scan, setScan] = useState<ScanState | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pickPhoto = () => {
+    if (!supabase) return;
+    if (!session) { signInWithGoogle(); return; }
+    fileRef.current?.click();
+  };
+  const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !supabase) return;
+    let image: string;
+    try { image = await photoToDataUrl(file); } catch { setScan({ preview: "", status: "error", error: t("Не получилось открыть это фото. Попробуйте JPEG или PNG.", "Couldn't open this photo. Try a JPEG or PNG."), found: [] }); return; }
+    setScan({ preview: image, status: "scanning", found: [] });
+    const { data, error: fnError } = await supabase.functions.invoke("wardrobe-scan", { body: { image, lang } });
+    if (fnError) {
+      let code = "";
+      try { code = (await (fnError as { context?: Response }).context?.json())?.error ?? ""; } catch { /* not json */ }
+      const msg = code === "scan_limit_user" ? t("На сегодня сканирований хватит — попробуйте завтра или добавьте ароматы вручную.", "That's enough scans for today — try tomorrow or add them by hand.")
+        : code === "scan_limit_ip" ? t("С этого устройства сегодня сканировали слишком часто.", "Too many scans from this device today.")
+        : code === "image_too_large" ? t("Фото слишком большое.", "The photo is too large.")
+        : t("Не получилось разглядеть флаконы. Попробуйте фото при хорошем свете, этикетками к камере.", "Couldn't make out the bottles. Try good light, labels facing the camera.");
+      setScan((s) => s && { ...s, status: "error", error: msg });
+      return;
+    }
+    const owned = new Set(wardrobe.map(itemKey));
+    const found: ScanFound[] = ((data?.items ?? []) as { brand: string; name: string; confidence: ScanFound["confidence"] }[]).map((r) => {
+      const item = matchScanned(r.brand, r.name);
+      const isOwned = owned.has(itemKey(item));
+      return { item, confidence: r.confidence, owned: isOwned, checked: !isOwned && r.confidence !== "low" };
+    });
+    setScan((s) => s && { ...s, status: "done", found });
+  };
+  const addScanned = () => {
+    if (!scan) return;
+    for (const f of scan.found) if (f.checked) add(f.item);
+    setScan(null);
+  };
+
   // ── generations ──
   const [used, setUsed] = useState<number | null>(null);
   const [history, setHistory] = useState<{ id: string; created_at: string; result: LayeringResult }[]>([]);
@@ -200,7 +272,10 @@ export default function Layering() {
   const remaining = used === null ? LIMIT : Math.max(0, LIMIT - used);
 
   useEffect(() => {
-    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("demo")) import("./layeringDemo").then((m) => setResult(m.DEMO_RESULT));
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("demo")) import("./layeringDemo").then((m) => {
+      setResult(m.DEMO_RESULT);
+      setScan({ preview: "/images/seance/table.png", status: "done", found: m.DEMO_SCAN.map((r) => ({ item: matchScanned(r.brand, r.name), confidence: r.confidence, owned: false, checked: r.confidence !== "low" })) });
+    });
   }, []);
 
   const generate = async () => {
@@ -249,6 +324,8 @@ export default function Layering() {
         .lay-btn { transition: transform .2s, box-shadow .3s, opacity .3s; } .lay-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 50px rgba(214,180,122,.35); }
         .lay-btn:disabled { opacity: .45; cursor: not-allowed; }
         .lay-line { animation: lay-line .6s ease; } @keyframes lay-line { from { opacity: 0; transform: translateY(6px); } }
+        .lay-scanline { position: absolute; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, ${C.gold}, transparent); box-shadow: 0 0 18px ${C.gold}; animation: lay-scan 1.6s ease-in-out infinite alternate; }
+        @keyframes lay-scan { from { top: 4%; } to { top: 94%; } }
         .lay-card { animation: lay-card .9s cubic-bezier(.16,1,.3,1) both; } @keyframes lay-card { from { opacity: 0; transform: translateY(30px); } }
         @media (prefers-reduced-motion: reduce) { .lay-orb-a, .lay-orb-b, .lay-orb-c { animation: none; } }
       `}</style>
@@ -329,7 +406,7 @@ export default function Layering() {
         {/* the atelier */}
         <section id="atelier" style={{ padding: "8vh 0 10vh", scrollMarginTop: 70 }}>
           <Reveal><SectionTitle kicker={t("АТЕЛЬЕ", "THE ATELIER")} title={t("Ваш гардероб", "Your wardrobe")} /></Reveal>
-          <p style={{ fontSize: 20, lineHeight: 1.5, color: C.dim, maxWidth: 640, marginTop: -10, marginBottom: 30 }}>{t("Соберите то, что у вас есть. Найдите аромат в списке, вставьте ссылку с Fragrantica или просто впишите название — и парфюмер дома сочинит сочетания именно из вашей полки.", "Gather what you own. Find a fragrance in the list, paste a Fragrantica link or just type a name — and the house perfumer will compose pairings from your shelf alone.")}</p>
+          <p style={{ fontSize: 20, lineHeight: 1.5, color: C.dim, maxWidth: 640, marginTop: -10, marginBottom: 30 }}>{t("Соберите то, что у вас есть. Сфотографируйте полку, найдите аромат в списке, вставьте ссылку с Fragrantica или просто впишите название — и парфюмер дома сочинит сочетания именно из вашей полки.", "Gather what you own. Photograph your shelf, find a fragrance in the list, paste a Fragrantica link or just type a name — and the house perfumer will compose pairings from your shelf alone.")}</p>
 
           {/* search */}
           <div style={{ position: "relative", maxWidth: 720 }}>
@@ -354,6 +431,18 @@ export default function Layering() {
               </div>
             )}
           </div>
+
+          {supabase && (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14, marginTop: 14 }}>
+              <button className="lay-chip" onClick={pickPhoto} disabled={scan?.status === "scanning"} style={{ display: "flex", alignItems: "center", gap: 10, ...mono, fontSize: 12, letterSpacing: ".18em", padding: "12px 18px", borderRadius: 999, border: `1px solid ${C.gold}66`, color: C.ink }}>
+                <CameraMark /> {t("СФОТОГРАФИРОВАТЬ ПОЛКУ", "PHOTOGRAPH YOUR SHELF")}
+              </button>
+              <span style={{ ...mono, fontSize: 11, color: C.dim }}>{session ? t("Поставьте флаконы в ряд этикетками к камере — найдём их сами.", "Line the bottles up, labels to the camera — we'll find them.") : t("Нужен вход через Google.", "Requires Google sign-in.")}</span>
+              <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} hidden />
+            </div>
+          )}
+
+          {scan && <ScanPanel scan={scan} setScan={setScan} onAdd={addScanned} t={t} />}
 
           {/* shelf */}
           <div style={{ marginTop: 28, minHeight: 120, borderRadius: 20, border: `1px dashed ${C.faint}`, padding: 18, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
@@ -447,6 +536,64 @@ function Option({ brand, name, hint, color, active, onPick }: { brand: string; n
       </span>
       {hint && <span style={{ ...mono, fontSize: 11, color: C.dim }}>{hint}</span>}
     </button>
+  );
+}
+
+function CameraMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.6" />
+    </svg>
+  );
+}
+
+function ScanPanel({ scan, setScan, onAdd, t }: { scan: ScanState; setScan: (s: ScanState | null) => void; onAdd: () => void; t: (ru: string, en: string) => string }) {
+  const toggle = (i: number) => setScan({ ...scan, found: scan.found.map((f, k) => (k === i && !f.owned ? { ...f, checked: !f.checked } : f)) });
+  const chosen = scan.found.filter((f) => f.checked).length;
+  const confLabel = (c: ScanFound["confidence"]) => (c === "high" ? t("точно", "sure") : c === "medium" ? t("похоже", "likely") : t("догадка", "a guess"));
+  return (
+    <div className="lay-card" style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 22, padding: 20, borderRadius: 20, border: `1px solid ${C.gold}44`, background: "rgba(255,255,255,.025)" }}>
+      {scan.preview && (
+        <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", alignSelf: "start" }}>
+          <img src={scan.preview} alt={t("Ваше фото", "Your photo")} style={{ display: "block", width: "100%", maxHeight: 340, objectFit: "cover", filter: scan.status === "scanning" ? "brightness(.7)" : "none", transition: "filter .4s" }} />
+          {scan.status === "scanning" && <div className="lay-scanline" />}
+        </div>
+      )}
+      <div>
+        {scan.status === "scanning" && <p style={{ fontSize: 24, fontStyle: "italic", color: C.dim }}>{t("Разглядываю флаконы…", "Looking at the bottles…")}</p>}
+        {scan.status === "error" && <p role="alert" style={{ ...mono, fontSize: 13, color: C.rose, lineHeight: 1.6 }}>{scan.error}</p>}
+        {scan.status === "done" && (
+          scan.found.length === 0 ? (
+            <p style={{ fontSize: 20, color: C.dim }}>{t("Флаконов на фото не нашлось. Попробуйте ближе и при хорошем свете.", "No bottles found. Try closer, in good light.")}</p>
+          ) : (
+            <>
+              <p style={{ ...mono, fontSize: 12, letterSpacing: ".2em", color: C.gold, marginBottom: 12 }}>{t(`НАЙДЕНО: ${scan.found.length}`, `FOUND: ${scan.found.length}`)}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {scan.found.map((f, i) => (
+                  <label key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 10, border: `1px solid ${C.line}`, opacity: f.owned ? 0.5 : 1, cursor: f.owned ? "default" : "pointer" }}>
+                    <input type="checkbox" checked={f.checked} disabled={f.owned} onChange={() => toggle(i)} style={{ accentColor: C.gold, width: 16, height: 16 }} />
+                    <MiniBottle color={colorFor(f.item)} size={18} />
+                    <span style={{ flex: 1 }}>
+                      {f.item.brand && <span style={{ ...mono, fontSize: 10, letterSpacing: ".12em", color: f.item.brand === "Silentium" ? C.gold : C.dim, textTransform: "uppercase", marginRight: 8 }}>{f.item.brand}</span>}
+                      <span style={{ fontSize: 19 }}>{f.item.name}</span>
+                    </span>
+                    <span style={{ ...mono, fontSize: 10, color: f.confidence === "low" ? C.rose : C.dim }}>{f.owned ? t("уже на полке", "on the shelf") : confLabel(f.confidence)}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )
+        )}
+        {scan.status !== "scanning" && (
+          <div style={{ display: "flex", gap: 14, marginTop: 16, flexWrap: "wrap" }}>
+            {scan.status === "done" && chosen > 0 && (
+              <button className="lay-btn" onClick={onAdd} style={{ ...mono, fontSize: 12, letterSpacing: ".2em", padding: "12px 20px", borderRadius: 999, background: C.gold, color: C.bg }}>{t(`ДОБАВИТЬ НА ПОЛКУ (${chosen})`, `ADD TO SHELF (${chosen})`)}</button>
+            )}
+            <button onClick={() => setScan(null)} style={{ ...mono, fontSize: 12, letterSpacing: ".15em", color: C.dim }}>{t("Закрыть", "Close")}</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
