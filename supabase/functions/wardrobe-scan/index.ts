@@ -9,14 +9,16 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
-const MODEL = Deno.env.get("OPENROUTER_VISION_MODEL") || "z-ai/glm-5.3-flash";
-const FALLBACK = Deno.env.get("OPENROUTER_VISION_FALLBACK") || "google/gemini-2.5-flash-lite";
+// Chosen by comparing 8 models on a real shelf photo: most accurate of the cheap ones (~$0.001, ~6 s).
+// GLM 5.3 Flash spent its whole budget "thinking" on photos and timed out.
+const MODEL = Deno.env.get("OPENROUTER_VISION_MODEL") || "google/gemini-3.1-flash-lite";
+const FALLBACK = Deno.env.get("OPENROUTER_VISION_FALLBACK") || "google/gemini-2.5-flash";
 const SITE_URL = Deno.env.get("SITE_URL") || "https://silentiumparfums.netlify.app";
 const MAX_IMAGE_CHARS = 6_000_000; // ~4.5 MB of base64; the client sends ~0.3–0.8 MB
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-layering-test",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-layering-test, x-scan-model",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
@@ -25,7 +27,7 @@ const json = (body: unknown, status = 200) =>
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["items"],
+  required: ["items", "unidentified"],
   properties: {
     items: {
       type: "array",
@@ -40,15 +42,23 @@ const SCHEMA = {
         },
       },
     },
+    unidentified: { type: "array", items: { type: "string" } },
   },
 } as const;
 
-const PROMPT = `You are looking at a photo of someone's perfume collection.
-List every perfume bottle you can see, left to right. For each: the brand and the fragrance name, exactly as the house writes it (e.g. "Maison Francis Kurkdjian" / "Baccarat Rouge 540", "Tom Ford" / "Tobacco Vanille", "Dior" / "Sauvage Elixir").
-Read the labels first; use the bottle's shape, cap and colour to identify it when the label is unreadable, and to tell flankers apart (EDT vs EDP vs Parfum/Elixir) only when you can actually see it.
-confidence: "high" — label clearly read or an unmistakable bottle; "medium" — partly read or strongly recognised; "low" — a guess.
-Do not invent bottles that aren't there. Skip anything that isn't a fragrance (creams, candles, deodorants). If there are no perfume bottles, return an empty list.
-Keep brand and fragrance names in their original Latin spelling, never translate them.`;
+const PROMPT = (lang: "ru" | "en") => `You are looking at a photo of someone's perfume collection. Identify the fragrances.
+
+"items" — every bottle you can actually identify, front row first, then the ones behind:
+- "brand": the perfume house only (e.g. "Maison Francis Kurkdjian", "Penhaligon's", "Nasomatto", "Maison Crivelli"). Never a perfumer's name, never a description, never "unknown".
+- "name": the fragrance name only, exactly as the house writes it (e.g. "Baccarat Rouge 540", "Halfeti", "Black Afgano"). Add a concentration (Elixir, Parfum, Extrait, Intense) only if you can read it.
+- Read every label, including small print. For Maison Margiela REPLICA bottles the fragrance name is the line after "Originally:" (e.g. "Jazz Club", "By the Fireplace", "On a Date", "From the Garden").
+- Don't confuse similar houses: "Maison Crivelli" vs "Maison Margiela", "Maison Francis Kurkdjian" vs "Maison Margiela".
+- Recognise iconic bottles by shape when the label is hidden (e.g. Jean Paul Gaultier's torso bottles, Paco Rabanne's ingot, Creed's tall bottles), and say only what the shape proves (a JPG torso in dark blue is a Le Male flanker — name it only if you can tell which).
+- confidence: "high" — label read or unmistakable bottle; "medium" — partly read or strongly recognised; "low" — an educated guess.
+
+"unidentified" — bottles you see but cannot name with at least a guess, each as a very short description in ${lang === "ru" ? "Russian" : "English"} (e.g. "${lang === "ru" ? "высокий чёрный флакон с золотой крышкой, за другими" : "tall black bottle with a gold cap, behind the others"}"). Never put descriptions into "items".
+
+Skip anything that isn't a fragrance (vases, figurines, flowers, candles, creams). Never invent bottles that aren't there. Keep brand and fragrance names in their original Latin spelling.`;
 
 async function sha256(s: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -77,7 +87,10 @@ Deno.serve(async (req) => {
   const { data: { user } } = isTest ? { data: { user: null } } : await userClient.auth.getUser();
   if (!user && !isTest) return json({ error: "auth_required" }, 401);
 
-  const body = await req.json().catch(() => null) as { image?: unknown } | null;
+  const body = await req.json().catch(() => null) as { image?: unknown; lang?: unknown } | null;
+  const lang: "ru" | "en" = body?.lang === "en" ? "en" : "ru";
+  // test mode may try other models: header x-scan-model
+  const models = isTest && req.headers.get("x-scan-model") ? [req.headers.get("x-scan-model")!] : [MODEL, FALLBACK];
   const image = typeof body?.image === "string" ? body.image : "";
   const header = image.match(/^data:image\/(jpeg|png|webp);base64,/);
   if (!header || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.slice(header[0].length))) return json({ error: "bad_image" }, 400);
@@ -95,29 +108,36 @@ Deno.serve(async (req) => {
     return json({ error: "server_error" }, 500);
   }
 
-  let usedModel = MODEL;
+  let usedModel = models[0];
   let problem = "";
   let items: { brand: string; name: string; confidence: string }[] | null = null;
+  let unidentified: string[] = [];
+  let usage: unknown = null;
   for (let attempt = 0; attempt < 2 && !items; attempt++) {
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": SITE_URL, "X-Title": "Silentium wardrobe scan" },
         body: JSON.stringify({
-          models: [MODEL, FALLBACK],
+          models,
           max_tokens: 6000,
+          usage: { include: true },
           temperature: 0.1,
-          messages: [{ role: "user", content: [{ type: "text", text: PROMPT }, { type: "image_url", image_url: { url: image } }] }],
+          messages: [{ role: "user", content: [{ type: "text", text: PROMPT(lang) }, { type: "image_url", image_url: { url: image } }] }],
           response_format: { type: "json_schema", json_schema: { name: "wardrobe", strict: true, schema: SCHEMA } },
         }),
       });
       if (!r.ok) { problem = `openrouter ${r.status}: ${(await r.text()).slice(0, 400)}`; continue; }
       const data = await r.json();
       usedModel = data?.model ?? usedModel;
+      usage = data?.usage ?? null;
       const content: string = data?.choices?.[0]?.message?.content ?? "";
       try {
         const parsed = parseModelJson(content);
-        if (Array.isArray(parsed?.items)) items = parsed.items;
+        if (Array.isArray(parsed?.items)) {
+          items = parsed.items;
+          unidentified = Array.isArray(parsed.unidentified) ? parsed.unidentified.filter((x: unknown) => typeof x === "string").slice(0, 20) : [];
+        }
         else problem = `no items (model=${usedModel}): ${content.slice(0, 300)}`;
       } catch {
         problem = `bad json (finish=${data?.choices?.[0]?.finish_reason}, model=${usedModel}): …${content.slice(-300)}`;
@@ -133,13 +153,16 @@ Deno.serve(async (req) => {
     return json(isTest ? { error: "scan_failed", detail: problem } : { error: "scan_failed" }, 502);
   }
 
-  // Tidy: trim, drop empties and duplicates, cap the list
+  // Tidy: trim, drop empties, placeholder brands and duplicates; cap the lists
+  const placeholder = /^(unknown|unidentified|n\/a|none|-|неизвест\S*)$/i;
   const seen = new Set<string>();
   const clean = items
     .map((i) => ({ brand: String(i.brand ?? "").trim().slice(0, 60), name: String(i.name ?? "").trim().slice(0, 80), confidence: ["high", "medium", "low"].includes(i.confidence) ? i.confidence : "low" }))
-    .filter((i) => i.name && !seen.has(`${i.brand}|${i.name}`.toLowerCase()) && seen.add(`${i.brand}|${i.name}`.toLowerCase()))
+    .map((i) => ({ ...i, brand: placeholder.test(i.brand) ? "" : i.brand }))
+    .filter((i) => i.name && !placeholder.test(i.name) && !seen.has(`${i.brand}|${i.name}`.toLowerCase()) && seen.add(`${i.brand}|${i.name}`.toLowerCase()))
     .slice(0, 40);
+  const notes = unidentified.map((u) => u.trim().slice(0, 140)).filter(Boolean);
 
-  if (!isTest) await admin.from("wardrobe_scans").update({ status: "done", items: clean, model: usedModel }).eq("id", scanId);
-  return json({ items: clean, model: usedModel });
+  if (!isTest) await admin.from("wardrobe_scans").update({ status: "done", items: { items: clean, unidentified: notes }, model: usedModel }).eq("id", scanId);
+  return json(isTest ? { items: clean, unidentified: notes, model: usedModel, usage } : { items: clean, unidentified: notes, model: usedModel });
 });

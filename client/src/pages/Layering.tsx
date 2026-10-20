@@ -10,7 +10,7 @@ import { useLang } from "@/contexts/LangContext";
 import { useReveal } from "@/lib/useReveal";
 import { perfumes, getPerfumeById } from "@/lib/perfumes";
 import { BOTTLE_COLORS } from "@/lib/bottleLooks";
-import { normalize, parseFragranticaUrl, searchCatalog } from "@/lib/fragranceCatalog";
+import { CATALOG, normalize, parseFragranticaUrl, searchCatalog } from "@/lib/fragranceCatalog";
 import { supabase, useSession, signInWithGoogle, signOut } from "@/lib/supabase";
 
 const C = { bg: "#07060a", ink: "#efe8dc", dim: "rgba(239,232,220,.6)", faint: "rgba(239,232,220,.18)", line: "rgba(239,232,220,.1)", gold: "#d6b47a", rose: "#e58fa3", violet: "#9b7bff" };
@@ -26,11 +26,22 @@ export interface LayeringResult { intro: string; combos: Combo[]; silentium: { i
 
 const itemKey = (i: WardrobeItem) => normalize(`${i.brand} ${i.name}`);
 
-// A bottle read from a photo → our canonical spelling (Silentium first, then the catalogue)
+// A bottle read from a photo → our canonical spelling (Silentium first, then the catalogue).
+// The model sometimes gets the house wrong or leaves it out while reading the name right
+// (Oud Maracujá → Maison Crivelli, Fantomas → Nasomatto), so a distinctive catalogue name wins.
+const CONCENTRATION = /\b(eau de parfum|eau de toilette|extrait de parfum|extrait|edp|edt|parfum)\b/g;
 function matchScanned(brand: string, name: string): WardrobeItem {
-  const n = normalize(name), b = normalize(brand);
+  const b = normalize(brand);
+  const n = normalize(name).replace(/^replica\s+/, "").replace(CONCENTRATION, "").replace(/\s+/g, " ").trim();
   const own = perfumes.find((p) => normalize(p.name) === n && (!b || b === "silentium"));
   if (own) return { brand: "Silentium", name: own.name, silentiumId: own.id };
+  const candidates = CATALOG.filter((e) => {
+    const en = normalize(e.name);
+    return en === n || en === `replica ${n}`;
+  });
+  const sameBrand = candidates.find((e) => normalize(e.brand) === b || b.includes(normalize(e.brand)) || normalize(e.brand).includes(b));
+  if (sameBrand) return { brand: sameBrand.brand, name: sameBrand.name };
+  if (candidates.length === 1 && n.length >= 5) return { brand: candidates[0].brand, name: candidates[0].name };
   const hit = searchCatalog(`${brand} ${name}`, 1)[0];
   if (hit && normalize(hit.name) === n) return { brand: hit.brand, name: hit.name };
   return { brand: brand.trim(), name: name.trim() };
@@ -56,7 +67,7 @@ function photoToDataUrl(file: File): Promise<string> {
 }
 
 interface ScanFound { item: WardrobeItem; confidence: "high" | "medium" | "low"; checked: boolean; owned: boolean }
-interface ScanState { preview: string; status: "scanning" | "done" | "error"; error?: string; found: ScanFound[] }
+interface ScanState { preview: string; status: "scanning" | "done" | "error"; error?: string; found: ScanFound[]; unidentified: string[] }
 
 // Deterministic colour for any fragrance: Silentium uses its own liquid colour
 function colorFor(item: { name: string; silentiumId?: string }) {
@@ -219,8 +230,8 @@ export default function Layering() {
     e.target.value = "";
     if (!file || !supabase) return;
     let image: string;
-    try { image = await photoToDataUrl(file); } catch { setScan({ preview: "", status: "error", error: t("Не получилось открыть это фото. Попробуйте JPEG или PNG.", "Couldn't open this photo. Try a JPEG or PNG."), found: [] }); return; }
-    setScan({ preview: image, status: "scanning", found: [] });
+    try { image = await photoToDataUrl(file); } catch { setScan({ preview: "", status: "error", error: t("Не получилось открыть это фото. Попробуйте JPEG или PNG.", "Couldn't open this photo. Try a JPEG or PNG."), found: [], unidentified: [] }); return; }
+    setScan({ preview: image, status: "scanning", found: [], unidentified: [] });
     const { data, error: fnError } = await supabase.functions.invoke("wardrobe-scan", { body: { image, lang } });
     if (fnError) {
       let code = "";
@@ -238,7 +249,9 @@ export default function Layering() {
       const isOwned = owned.has(itemKey(item));
       return { item, confidence: r.confidence, owned: isOwned, checked: !isOwned && r.confidence !== "low" };
     });
-    setScan((s) => s && { ...s, status: "done", found });
+    // the same fragrance can come back twice (e.g. a bottle and its travel spray)
+    const unique = found.filter((f, i) => found.findIndex((g) => itemKey(g.item) === itemKey(f.item)) === i);
+    setScan((s) => s && { ...s, status: "done", found: unique, unidentified: (data?.unidentified ?? []) as string[] });
   };
   const addScanned = () => {
     if (!scan) return;
@@ -274,7 +287,7 @@ export default function Layering() {
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("demo")) import("./layeringDemo").then((m) => {
       setResult(m.DEMO_RESULT);
-      setScan({ preview: "/images/seance/table.png", status: "done", found: m.DEMO_SCAN.map((r) => ({ item: matchScanned(r.brand, r.name), confidence: r.confidence, owned: false, checked: r.confidence !== "low" })) });
+      setScan({ preview: "/images/seance/table.png", status: "done", unidentified: ["тёмно-синий флакон в форме торса, сзади", "чёрный цилиндр с надписью OR NOIR"], found: m.DEMO_SCAN.map((r) => ({ item: matchScanned(r.brand, r.name), confidence: r.confidence, owned: false, checked: r.confidence !== "low" })) });
     });
   }, []);
 
@@ -563,11 +576,11 @@ function ScanPanel({ scan, setScan, onAdd, t }: { scan: ScanState; setScan: (s: 
         {scan.status === "scanning" && <p style={{ fontSize: 24, fontStyle: "italic", color: C.dim }}>{t("Разглядываю флаконы…", "Looking at the bottles…")}</p>}
         {scan.status === "error" && <p role="alert" style={{ ...mono, fontSize: 13, color: C.rose, lineHeight: 1.6 }}>{scan.error}</p>}
         {scan.status === "done" && (
-          scan.found.length === 0 ? (
+          scan.found.length === 0 && scan.unidentified.length === 0 ? (
             <p style={{ fontSize: 20, color: C.dim }}>{t("Флаконов на фото не нашлось. Попробуйте ближе и при хорошем свете.", "No bottles found. Try closer, in good light.")}</p>
           ) : (
             <>
-              <p style={{ ...mono, fontSize: 12, letterSpacing: ".2em", color: C.gold, marginBottom: 12 }}>{t(`НАЙДЕНО: ${scan.found.length}`, `FOUND: ${scan.found.length}`)}</p>
+              {scan.found.length > 0 && <p style={{ ...mono, fontSize: 12, letterSpacing: ".2em", color: C.gold, marginBottom: 12 }}>{t(`НАЙДЕНО: ${scan.found.length}`, `FOUND: ${scan.found.length}`)}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {scan.found.map((f, i) => (
                   <label key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 10, border: `1px solid ${C.line}`, opacity: f.owned ? 0.5 : 1, cursor: f.owned ? "default" : "pointer" }}>
@@ -581,6 +594,14 @@ function ScanPanel({ scan, setScan, onAdd, t }: { scan: ScanState; setScan: (s: 
                   </label>
                 ))}
               </div>
+              {scan.unidentified.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <p style={{ ...mono, fontSize: 11, letterSpacing: ".15em", color: C.dim }}>{t(`НЕ УЗНАЛИ ЕЩЁ ${scan.unidentified.length} — ДОБАВЬТЕ ИХ ЧЕРЕЗ ПОИСК:`, `COULDN'T NAME ${scan.unidentified.length} MORE — ADD THEM WITH THE SEARCH:`)}</p>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: C.dim, fontSize: 16, lineHeight: 1.5 }}>
+                    {scan.unidentified.map((u, i) => <li key={i}>{u}</li>)}
+                  </ul>
+                </div>
+              )}
             </>
           )
         )}
