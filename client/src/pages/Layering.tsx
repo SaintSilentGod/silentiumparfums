@@ -189,7 +189,7 @@ export default function Layering() {
   }, [wardrobe, session]);
 
   const add = (item: WardrobeItem) => {
-    setWardrobe((w) => (w.some((x) => itemKey(x) === itemKey(item)) || w.length >= 40 ? w : [...w, item]));
+    setWardrobe((w) => (w.some((x) => itemKey(x) === itemKey(item)) || w.length >= 30 ? w : [...w, item]));
     setQuery("");
     setActive(0);
   };
@@ -238,6 +238,7 @@ export default function Layering() {
       try { code = (await (fnError as { context?: Response }).context?.json())?.error ?? ""; } catch { /* not json */ }
       const msg = code === "scan_limit_user" ? t("На сегодня сканирований хватит — попробуйте завтра или добавьте ароматы вручную.", "That's enough scans for today — try tomorrow or add them by hand.")
         : code === "scan_limit_ip" ? t("С этого устройства сегодня сканировали слишком часто.", "Too many scans from this device today.")
+        : code === "scan_limit_global" ? t("Сканер сегодня очень загружен. Добавьте ароматы вручную или попробуйте завтра.", "The scanner is very busy today. Add them by hand or try tomorrow.")
         : code === "image_too_large" ? t("Фото слишком большое.", "The photo is too large.")
         : t("Не получилось разглядеть флаконы. Попробуйте фото при хорошем свете, этикетками к камере.", "Couldn't make out the bottles. Try good light, labels facing the camera.");
       setScan((s) => s && { ...s, status: "error", error: msg });
@@ -302,6 +303,8 @@ export default function Layering() {
         setError(
           code === "limit_reached" ? t("Все три смешивания уже использованы.", "All three blends have been used.")
           : code === "limit_ip" ? t("С этого устройства сегодня смешивали слишком часто. Попробуйте завтра.", "Too many blends from this device today. Try tomorrow.")
+          : code === "limit_attempts" ? t("На сегодня попыток достаточно — возвращайтесь завтра.", "That's enough attempts for today — come back tomorrow.")
+          : code === "limit_global" ? t("Ателье сегодня очень загружено. Попробуйте завтра.", "The atelier is very busy today. Please try tomorrow.")
           : code === "wardrobe_too_small" ? t("Добавьте хотя бы два аромата.", "Add at least two fragrances.")
           : t("Парфюмер не смог закончить рецепт. Попытка не списана — попробуйте ещё раз.", "The perfumer couldn't finish. The attempt wasn't counted — please try again."),
         );
@@ -450,10 +453,11 @@ export default function Layering() {
               <button className="lay-chip" onClick={pickPhoto} disabled={scan?.status === "scanning"} style={{ display: "flex", alignItems: "center", gap: 10, ...mono, fontSize: 12, letterSpacing: ".18em", padding: "12px 18px", borderRadius: 999, border: `1px solid ${C.gold}66`, color: C.ink }}>
                 <CameraMark /> {t("СФОТОГРАФИРОВАТЬ ПОЛКУ", "PHOTOGRAPH YOUR SHELF")}
               </button>
-              <span style={{ ...mono, fontSize: 11, color: C.dim }}>{session ? t("Поставьте флаконы в ряд этикетками к камере — найдём их сами.", "Line the bottles up, labels to the camera — we'll find them.") : t("Нужен вход через Google.", "Requires Google sign-in.")}</span>
+              {!session && <span style={{ ...mono, fontSize: 11, color: C.dim }}>{t("Нужен вход через Google.", "Requires Google sign-in.")}</span>}
               <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} hidden />
             </div>
           )}
+          {supabase && <PhotoTips t={t} />}
 
           {scan && <ScanPanel scan={scan} setScan={setScan} onAdd={addScanned} t={t} />}
 
@@ -552,6 +556,26 @@ function Option({ brand, name, hint, color, active, onPick }: { brand: string; n
   );
 }
 
+// What makes a shelf photo readable — shown next to the camera button
+function PhotoTips({ t }: { t: (ru: string, en: string) => string }) {
+  const tips = [
+    [t("Этикетки к камере", "Labels facing the camera"), t("Мы читаем названия — если этикетку не видно, флакон не узнать.", "We read the names — a hidden label means an unknown bottle.")],
+    [t("В один ряд", "In a single row"), t("Не прячьте флаконы друг за другом: задний ряд почти не читается.", "Don't hide bottles behind each other: the back row is barely readable.")],
+    [t("Свет без бликов", "Light without glare"), t("Днём у окна, без вспышки — блики на стекле съедают буквы.", "Daylight by a window, no flash — glare on glass eats the letters.")],
+    [t("До 15 флаконов", "Up to 15 bottles"), t("Больше — снимите в два кадра, чтобы надписи были крупнее.", "More than that — take two photos so the text is bigger.")],
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 14, maxWidth: 900 }}>
+      {tips.map(([title, text], i) => (
+        <div key={i} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${C.line}`, background: "rgba(255,255,255,.02)" }}>
+          <p style={{ ...mono, fontSize: 11, letterSpacing: ".15em", color: C.gold, textTransform: "uppercase" }}>{title}</p>
+          <p style={{ fontSize: 16, lineHeight: 1.4, color: C.dim, marginTop: 6 }}>{text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CameraMark() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
@@ -600,6 +624,7 @@ function ScanPanel({ scan, setScan, onAdd, t }: { scan: ScanState; setScan: (s: 
                   <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: C.dim, fontSize: 16, lineHeight: 1.5 }}>
                     {scan.unidentified.map((u, i) => <li key={i}>{u}</li>)}
                   </ul>
+                  <p style={{ fontSize: 15, color: C.dim, marginTop: 8, fontStyle: "italic" }}>{t("Совет: снимите эти флаконы отдельно, этикетками к камере — так мы их узнаем.", "Tip: photograph these bottles separately, labels to the camera — then we'll recognise them.")}</p>
                 </div>
               )}
             </>

@@ -14,8 +14,8 @@ import { SILENTIUM } from "./silentium.ts";
 // Cheap, multilingual, supports structured output. OpenRouter falls back to the second model if the first fails.
 const MODEL = Deno.env.get("OPENROUTER_MODEL") || "z-ai/glm-5.3-flash";
 const FALLBACK_MODEL = Deno.env.get("OPENROUTER_FALLBACK_MODEL") || "deepseek/deepseek-v4-flash";
-const USER_LIMIT = 3;
-const IP_LIMIT = 6; // per day — stops one person farming generations with many Google accounts
+const USER_LIMIT = 3; // successful blends per account, lifetime
+const DAILY_GLOBAL = Number(Deno.env.get("LAYERING_DAILY_GLOBAL") || 300); // whole-site ceiling per day
 const SITE_URL = Deno.env.get("SITE_URL") || "https://silentiumparfums.netlify.app";
 
 const cors = {
@@ -118,6 +118,14 @@ Language: ${lang === "ru" ? "Russian" : "English"}.`;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
+// The client's address as Cloudflare saw it (can't be spoofed: Supabase overwrites forwarding headers).
+// IPv6 is reduced to its /64 — one household or server gets a whole /64, so per-address limits would be trivial to dodge.
+function clientIp(req: Request) {
+  const raw = (req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim();
+  if (!raw.includes(":")) return raw;
+  return raw.split(":").slice(0, 4).join(":") + "::/64";
+}
+
 async function sha256(s: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -157,27 +165,29 @@ Deno.serve(async (req) => {
   for (const r of raw) {
     if (!r || typeof r !== "object") continue;
     const o = r as Record<string, unknown>;
-    const name = typeof o.name === "string" ? o.name.trim().slice(0, 80) : "";
-    const brand = typeof o.brand === "string" ? o.brand.trim().slice(0, 60) : "";
+    const name = typeof o.name === "string" ? o.name.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : "";
+    const brand = typeof o.brand === "string" ? o.brand.replace(/[\r\n\t]+/g, " ").trim().slice(0, 60) : "";
     const key = norm(`${brand} ${name}`);
     if (!name || seen.has(key)) continue;
     seen.add(key);
     items.push({ brand, name });
-    if (items.length >= 40) break;
+    if (items.length >= 30) break;
   }
   if (items.length < 2) return json({ error: "wardrobe_too_small" }, 400);
 
   // Claim a generation (atomic, per user and per IP)
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
+  const ip = clientIp(req);
   const ipHash = ip ? await sha256(`${ip}:${Deno.env.get("LAYERING_IP_SALT") ?? "silentium"}`) : null;
   const { data: genId, error: claimError } = isTest ? { data: null, error: null } : await admin.rpc("claim_layering_generation", {
-    p_user: user!.id, p_ip_hash: ipHash, p_lang: lang, p_wardrobe: items, p_user_limit: USER_LIMIT, p_ip_limit: IP_LIMIT,
+    p_user: user!.id, p_ip_hash: ipHash, p_lang: lang, p_wardrobe: items, p_user_limit: USER_LIMIT, p_global_limit: DAILY_GLOBAL,
   });
   if (claimError) {
     const msg = claimError.message ?? "";
     if (msg.includes("limit_user")) return json({ error: "limit_reached", remaining: 0 }, 429);
     if (msg.includes("limit_ip")) return json({ error: "limit_ip" }, 429);
+    if (msg.includes("limit_attempts")) return json({ error: "limit_attempts" }, 429);
+    if (msg.includes("limit_global")) return json({ error: "limit_global" }, 503);
     console.error("claim failed", claimError);
     return json({ error: "server_error" }, 500);
   }

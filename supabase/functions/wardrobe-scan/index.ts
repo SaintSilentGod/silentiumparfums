@@ -14,7 +14,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 const MODEL = Deno.env.get("OPENROUTER_VISION_MODEL") || "google/gemini-3.1-flash-lite";
 const FALLBACK = Deno.env.get("OPENROUTER_VISION_FALLBACK") || "google/gemini-2.5-flash";
 const SITE_URL = Deno.env.get("SITE_URL") || "https://silentiumparfums.netlify.app";
-const MAX_IMAGE_CHARS = 6_000_000; // ~4.5 MB of base64; the client sends ~0.3–0.8 MB
+const MAX_IMAGE_CHARS = 2_800_000; // ~2 MB of base64; the client sends ≤1600 px JPEGs, ~0.2–0.8 MB
+const DAILY_GLOBAL = Number(Deno.env.get("SCAN_DAILY_GLOBAL") || 1000); // whole-site ceiling per day
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +61,14 @@ const PROMPT = (lang: "ru" | "en") => `You are looking at a photo of someone's p
 
 Skip anything that isn't a fragrance (vases, figurines, flowers, candles, creams). Never invent bottles that aren't there. Keep brand and fragrance names in their original Latin spelling.`;
 
+// The client's address as Cloudflare saw it (can't be spoofed: Supabase overwrites forwarding headers).
+// IPv6 is reduced to its /64 — one household or server gets a whole /64, so per-address limits would be trivial to dodge.
+function clientIp(req: Request) {
+  const raw = (req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim();
+  if (!raw.includes(":")) return raw;
+  return raw.split(":").slice(0, 4).join(":") + "::/64";
+}
+
 async function sha256(s: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -87,6 +96,7 @@ Deno.serve(async (req) => {
   const { data: { user } } = isTest ? { data: { user: null } } : await userClient.auth.getUser();
   if (!user && !isTest) return json({ error: "auth_required" }, 401);
 
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_IMAGE_CHARS + 2000) return json({ error: "image_too_large" }, 413);
   const body = await req.json().catch(() => null) as { image?: unknown; lang?: unknown } | null;
   const lang: "ru" | "en" = body?.lang === "en" ? "en" : "ru";
   // test mode may try other models: header x-scan-model
@@ -97,13 +107,14 @@ Deno.serve(async (req) => {
   if (image.length > MAX_IMAGE_CHARS) return json({ error: "image_too_large" }, 413);
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
+  const ip = clientIp(req);
   const ipHash = ip ? await sha256(`${ip}:${Deno.env.get("LAYERING_IP_SALT") ?? "silentium"}`) : null;
-  const { data: scanId, error: claimError } = isTest ? { data: null, error: null } : await admin.rpc("claim_wardrobe_scan", { p_user: user!.id, p_ip_hash: ipHash });
+  const { data: scanId, error: claimError } = isTest ? { data: null, error: null } : await admin.rpc("claim_wardrobe_scan", { p_user: user!.id, p_ip_hash: ipHash, p_global_limit: DAILY_GLOBAL });
   if (claimError) {
     const msg = claimError.message ?? "";
     if (msg.includes("scan_limit_user")) return json({ error: "scan_limit_user" }, 429);
     if (msg.includes("scan_limit_ip")) return json({ error: "scan_limit_ip" }, 429);
+    if (msg.includes("scan_limit_global")) return json({ error: "scan_limit_global" }, 503);
     console.error("claim failed", claimError);
     return json({ error: "server_error" }, 500);
   }
@@ -120,7 +131,7 @@ Deno.serve(async (req) => {
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": SITE_URL, "X-Title": "Silentium wardrobe scan" },
         body: JSON.stringify({
           models,
-          max_tokens: 6000,
+          max_tokens: 3000,
           usage: { include: true },
           temperature: 0.1,
           messages: [{ role: "user", content: [{ type: "text", text: PROMPT(lang) }, { type: "image_url", image_url: { url: image } }] }],
