@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useLang } from "@/contexts/LangContext";
+import { perfumes } from "@/lib/perfumes";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -264,7 +265,7 @@ export default function Home() {
         }}
       >
         <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.18)", fontSize: "0.55rem" }}>
-          {t("ЭМОЦИОНАЛЬНАЯ КАРТА", "EMOTIONAL MAP")} — 10 {t("АРОМАТОВ", "FRAGRANCES")}
+          {t("ЭМОЦИОНАЛЬНАЯ КАРТА", "EMOTIONAL MAP")} — {perfumes.length} {t("АРОМАТОВ", "FRAGRANCES")}
         </span>
       </div>
 

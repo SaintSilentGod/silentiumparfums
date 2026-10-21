@@ -307,5 +307,35 @@ export const SILENTIUM = [
       ]
     },
     "keywords": "RAW · NATURAL · UNFILTERED"
+  },
+  {
+    "id": "santa-caecilia",
+    "name": "Santa Caecilia",
+    "emotions": [
+      "Devotion",
+      "Peace",
+      "Love"
+    ],
+    "tagline": "A song in the heart",
+    "notes": {
+      "top": [
+        "White Flowers",
+        "Airy Notes"
+      ],
+      "heart": [
+        "Lily",
+        "Jasmine",
+        "Gardenia",
+        "Frangipani"
+      ],
+      "base": [
+        "Woody Notes",
+        "Ambergris",
+        "Musk",
+        "Patchouli",
+        "Oakmoss"
+      ]
+    },
+    "keywords": "WHITE · FLORAL · SACRED"
   }
 ] as const;

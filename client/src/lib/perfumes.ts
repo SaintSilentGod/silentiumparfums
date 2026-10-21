@@ -407,6 +407,47 @@ export const perfumes: Perfume[] = [
     radarFill: "rgba(122,154,90,0.12)",
     keywords: { ru: "СЫРОЙ · ПРИРОДНЫЙ · НЕФИЛЬТРОВАННЫЙ", en: "RAW · NATURAL · UNFILTERED" },
   },
+  {
+    id: "santa-caecilia",
+    name: "Santa Caecilia",
+    emotionalPath: ["Devotion", "Peace", "Love"],
+    scentNotes: {
+      top: { ru: ["Белые цветы", "Воздушные ноты"], en: ["White Flowers", "Airy Notes"] },
+      heart: { ru: ["Лилия", "Жасмин", "Гардения", "Франжипани"], en: ["Lily", "Jasmine", "Gardenia", "Frangipani"] },
+      base: { ru: ["Древесные ноты", "Амбра", "Мускус", "Пачули", "Дубовый мох"], en: ["Woody Notes", "Ambergris", "Musk", "Patchouli", "Oakmoss"] },
+    },
+    radarAxes: [
+      { key: "purity", label: { ru: "Чистота", en: "Purity" }, value: 94 },
+      { key: "devotion", label: { ru: "Преданность", en: "Devotion" }, value: 90 },
+      { key: "light", label: { ru: "Свет", en: "Light" }, value: 86 },
+      { key: "serenity", label: { ru: "Безмятежность", en: "Serenity" }, value: 82 },
+      { key: "tenderness", label: { ru: "Нежность", en: "Tenderness" }, value: 88 },
+      { key: "melancholy", label: { ru: "Меланхолия", en: "Melancholy" }, value: 41 },
+    ],
+    description: {
+      ru: "Белая лилия на холодном мраморе. Музыка, которую слышит только тот, кто молчит. Нежность, которая сильнее страха.",
+      en: "A white lily on cold marble. Music heard only by those who keep silent. A tenderness stronger than fear.",
+    },
+    tagline: { ru: "Песнь в сердце", en: "A song in the heart" },
+    memoryFragments: {
+      ru: ["# Лилии на алтаре", "# Орган под каменными сводами", "# Белая ткань на холодном мраморе", "# Свет из высокого окна", "# Тишина после последней ноты"],
+      en: ["# Lilies on the altar", "# An organ under stone vaults", "# White cloth on cold marble", "# Light from a high window", "# The silence after the last note"],
+    },
+    origin: { coords: "41.8878° N, 12.4757° E", location: { ru: "Рим, Италия", en: "Rome, Italy" } },
+    releaseDate: "22 / 11 / 2026",
+    heroImage: "/images/santa-caecilia/waterhouse.webp",
+    gallery: [
+      "/images/santa-caecilia/raphael.webp",
+      "/images/santa-caecilia/reni.webp",
+      "/images/santa-caecilia/dolci.webp",
+      "/images/santa-caecilia/domenichino.webp",
+      "/images/santa-caecilia/gentileschi.webp",
+    ],
+    accentColor: "#b8923a",
+    accentColorDim: "rgba(184,146,58,0.35)",
+    radarFill: "rgba(184,146,58,0.12)",
+    keywords: { ru: "БЕЛЫЙ · ЦВЕТОЧНЫЙ · СВЯЩЕННЫЙ", en: "WHITE · FLORAL · SACRED" },
+  },
 ];
 
 // Emotional map tree — 3 steps to reach a perfume
@@ -414,7 +455,7 @@ export const emotionTree: Record<string, Record<string, Record<string, string[]>
   Love: {
     Nostalgia: { Warmth: ["sunlit-memories", "summer-of-2009"], Melancholy: ["summer-of-2009"] },
     Obsession: { Euphoria: ["self-addicted"], Confidence: ["narcisstic-king"] },
-    Devotion: { Peace: ["sunlit-memories"], Warmth: ["self-addicted"] },
+    Devotion: { Peace: ["santa-caecilia", "sunlit-memories"], Warmth: ["self-addicted"] },
   },
   Isolation: {
     Silence: { Peace: ["silent-fog", "laundry-routine"], Void: ["silent-fog"] },
@@ -429,7 +470,7 @@ export const emotionTree: Record<string, Record<string, Record<string, string[]>
   Ritual: {
     Warmth: { Peace: ["russian-banya"], Silence: ["russian-banya"] },
     Silence: { Darkness: ["seance"], Void: ["seance"] },
-    Devotion: { Peace: ["russian-banya"], Warmth: ["russian-banya"] },
+    Devotion: { Peace: ["santa-caecilia", "russian-banya"], Warmth: ["russian-banya"] },
   },
   Nostalgia: {
     Love: { Warmth: ["summer-of-2009", "sunlit-memories"], Melancholy: ["summer-of-2009"] },
