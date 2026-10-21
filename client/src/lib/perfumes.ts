@@ -448,6 +448,41 @@ export const perfumes: Perfume[] = [
     radarFill: "rgba(184,146,58,0.12)",
     keywords: { ru: "БЕЛЫЙ · ЦВЕТОЧНЫЙ · СВЯЩЕННЫЙ", en: "WHITE · FLORAL · SACRED" },
   },
+  {
+    id: "almost-nothing",
+    name: "almost nothing",
+    emotionalPath: ["Love", "Warmth", "Silence"],
+    scentNotes: {
+      all: {
+        ru: ["Гедион", "Iso E Super", "Мускус", "Горячее железо"],
+        en: ["Hedione", "Iso E Super", "Musk", "Hot Iron"],
+      },
+    },
+    radarAxes: [
+      { key: "intimacy", label: { ru: "Близость", en: "Intimacy" }, value: 97 },
+      { key: "skin", label: { ru: "Кожа", en: "Skin" }, value: 94 },
+      { key: "silence", label: { ru: "Тишина", en: "Silence" }, value: 90 },
+      { key: "cleanliness", label: { ru: "Чистота", en: "Cleanliness" }, value: 86 },
+      { key: "warmth", label: { ru: "Тепло", en: "Warmth" }, value: 78 },
+      { key: "sillage", label: { ru: "Шлейф", en: "Sillage" }, value: 12 },
+    ],
+    description: {
+      ru: "Почти ничего. Запах кожи, которую только что поцеловали. Его слышит только тот, кто стоит очень близко.",
+      en: "Almost nothing. The scent of skin that has just been kissed. Only someone standing very close can hear it.",
+    },
+    tagline: { ru: "Вторая кожа", en: "A second skin" },
+    memoryFragments: {
+      ru: ["# Утро в чужой рубашке", "# Тёплая шея под ухом", "# Только что выглаженный хлопок", "# Кожа после душа", "# Шёпот, а не голос"],
+      en: ["# Morning in someone else's shirt", "# A warm neck just below the ear", "# Freshly ironed cotton", "# Skin after a shower", "# A whisper, not a voice"],
+    },
+    origin: { coords: "0 cm", location: { ru: "Ближе, чем кажется", en: "Closer than you think" } },
+    releaseDate: "2026",
+    heroImage: "/images/almost-nothing/skin.webp",
+    accentColor: "#c9a08a",
+    accentColorDim: "rgba(201,160,138,0.35)",
+    radarFill: "rgba(201,160,138,0.12)",
+    keywords: { ru: "КОЖА · МУСКУС · ТИШИНА", en: "SKIN · MUSK · SILENCE" },
+  },
 ];
 
 // Emotional map tree — 3 steps to reach a perfume
@@ -455,10 +490,10 @@ export const emotionTree: Record<string, Record<string, Record<string, string[]>
   Love: {
     Nostalgia: { Warmth: ["sunlit-memories", "summer-of-2009"], Melancholy: ["summer-of-2009"] },
     Obsession: { Euphoria: ["self-addicted"], Confidence: ["narcisstic-king"] },
-    Devotion: { Peace: ["santa-caecilia", "sunlit-memories"], Warmth: ["self-addicted"] },
+    Devotion: { Peace: ["santa-caecilia", "sunlit-memories"], Warmth: ["almost-nothing", "self-addicted"] },
   },
   Isolation: {
-    Silence: { Peace: ["silent-fog", "laundry-routine"], Void: ["silent-fog"] },
+    Silence: { Peace: ["almost-nothing", "silent-fog", "laundry-routine"], Void: ["silent-fog"] },
     Ritual: { Silence: ["seance"], Darkness: ["seance"] },
     Melancholy: { Void: ["silent-fog"], Peace: ["laundry-routine"] },
   },
@@ -484,7 +519,7 @@ export const emotionTree: Record<string, Record<string, Record<string, string[]>
   },
   Warmth: {
     Peace: { Silence: ["laundry-routine", "russian-banya"], Ritual: ["russian-banya"] },
-    Love: { Nostalgia: ["sunlit-memories", "summer-of-2009"], Devotion: ["self-addicted"] },
+    Love: { Nostalgia: ["sunlit-memories", "summer-of-2009"], Devotion: ["almost-nothing", "self-addicted"] },
     Ritual: { Warmth: ["russian-banya"], Peace: ["russian-banya"] },
   },
   Fear: {

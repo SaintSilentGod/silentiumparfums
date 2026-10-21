@@ -337,5 +337,24 @@ export const SILENTIUM = [
       ]
     },
     "keywords": "WHITE · FLORAL · SACRED"
+  },
+  {
+    "id": "almost-nothing",
+    "name": "almost nothing",
+    "emotions": [
+      "Love",
+      "Warmth",
+      "Silence"
+    ],
+    "tagline": "A second skin",
+    "notes": {
+      "all": [
+        "Hedione",
+        "Iso E Super",
+        "Musk",
+        "Hot Iron"
+      ]
+    },
+    "keywords": "SKIN · MUSK · SILENCE"
   }
 ] as const;

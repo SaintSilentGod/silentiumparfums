@@ -15,4 +15,5 @@ export const worlds: Record<string, ComponentType<WorldProps>> = {
   "narcisstic-king": lazy(() => import("./KingWorld")),
   "self-addicted": lazy(() => import("./SelfWorld")),
   "santa-caecilia": lazy(() => import("./CaeciliaWorld")),
+  "almost-nothing": lazy(() => import("./AlmostNothingWorld")),
 };

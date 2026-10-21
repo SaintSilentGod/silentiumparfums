@@ -10,5 +10,6 @@ export const BOTTLE_COLORS: Record<string, { liquid: string; cap: string; glow: 
   "narcisstic-king": { liquid: "#6a0d1a", cap: "#c9a24a", glow: "#ff3a4a" },
   "self-addicted": { liquid: "#f2a7b8", cap: "#1a1214", glow: "#ffb3c8" },
   "summer-of-2009": { liquid: "#3e7a1e", cap: "#2b1a2e", glow: "#9dff5f" },
+  "almost-nothing": { liquid: "#f1e2d6", cap: "#e8d5c6", glow: "#ffe6d8" },
   "santa-caecilia": { liquid: "#e6cf8f", cap: "#f2efe8", glow: "#fff3d6" },
 };
