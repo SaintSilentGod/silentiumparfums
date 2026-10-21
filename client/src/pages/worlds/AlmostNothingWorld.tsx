@@ -276,8 +276,12 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
 
         {/* photo pair (generated images; hidden until they exist) */}
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginBottom: 160 }}>
-          <Photo src={`${IMG}/sheets.webp`} alt={t("Смятые белые простыни в утреннем свете", "Crumpled white sheets in morning light")} style={{ aspectRatio: "4 / 5", borderRadius: 4 }} />
-          <Photo src={`${IMG}/iron.webp`} alt={t("Пар от утюга над белым хлопком", "Steam from an iron over white cotton")} style={{ aspectRatio: "4 / 5", borderRadius: 4, marginTop: "12vh" }} />
+          {([["sheets", t("Смятые белые простыни в утреннем свете", "Crumpled white sheets in morning light"), 0], ["iron", t("Пар от утюга над белым хлопком", "Steam from an iron over white cotton"), 1]] as const).map(([name, alt, k]) => (
+            <Whisper key={name} style={{ marginTop: k ? "14vh" : 0 }}>
+              <Photo src={`${IMG}/${name}.webp`} alt={alt} style={{ aspectRatio: "4 / 5", borderRadius: 4, boxShadow: "0 40px 80px rgba(90,74,66,.12)" }} />
+              <p style={{ ...light, fontSize: 13, color: C.dim, marginTop: 14 }}>{fragments[k === 0 ? 0 : 2]?.toLowerCase()}</p>
+            </Whisper>
+          ))}
         </section>
 
         {/* sillage */}
@@ -302,7 +306,7 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
       {/* leave a trace */}
       <section style={{ position: "relative", zIndex: 3, padding: "6vh clamp(16px,5vw,64px) 14vh", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 18 }}>
         <div style={{ width: "min(420px, 80vw)", marginBottom: 20 }}>
-          <Photo src={`${IMG}/wrist.webp`} alt={t("Запястье крупным планом", "A wrist, close up")} style={{ aspectRatio: "1", borderRadius: "50%" }} />
+          <Photo src={`${IMG}/wrist.webp`} alt={t("Запястье крупным планом", "A wrist, close up")} style={{ aspectRatio: "1", objectPosition: "50% 70%", maskImage: "radial-gradient(circle, #000 48%, transparent 70%)", WebkitMaskImage: "radial-gradient(circle, #000 48%, transparent 70%)" }} />
         </div>
         <p style={{ ...thin, fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>{t("Оставьте след", "Leave a trace")}</p>
         <button onClick={leaveTrace} aria-label={t("Оставить след и написать нам", "Leave a trace and write to us")} style={{ position: "relative", width: "min(360px, 80vw)", height: 180, borderRadius: 999, background: `radial-gradient(ellipse at 50% 40%, #f8efe7, ${C.skin})`, boxShadow: "inset 0 2px 20px rgba(90,74,66,.08), 0 20px 60px rgba(90,74,66,.10)", overflow: "hidden" }}>

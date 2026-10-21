@@ -86,6 +86,132 @@ function FlipPhone({ messages, t }: { messages: string[]; t: (ru: string, en: st
   );
 }
 
+// ── Gachapon: turn the handle a full circle, a capsule rolls out, tap it, the note-sticker joins the album ──
+const GACHA = "/images/synthetic-ecstasy";
+const CAPSULE_HUE = [0, 150, 250, 60, 200, 300];
+const RARITY = ["SSR", "R", "SR", "N", "UR", "R", "SR", "N"];
+type Phase = "idle" | "drop" | "ready" | "open";
+
+function Gachapon({ notes, stickers, t }: { notes: string[]; stickers: string[]; t: (ru: string, en: string) => string }) {
+  const [got, setGot] = useState<number[]>([]);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [cur, setCur] = useState(-1);
+  const [shake, setShake] = useState(0);
+  const handle = useRef<HTMLDivElement>(null);
+  const angle = useRef(0); // total rotation, radians
+  const acc = useRef(0); // progress of the current turn
+  const drag = useRef<{ last: number; moved: number } | null>(null);
+  const anim = useRef(0);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => { cancelAnimationFrame(anim.current); timers.current.forEach(clearTimeout); }, []);
+  const later = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, prefersReducedMotion() ? 0 : ms)); };
+  const done = got.length >= notes.length;
+  const busy = phase !== "idle" || done;
+  const paint = () => { if (handle.current) handle.current.style.transform = `translate(-50%,-50%) rotate(${angle.current}rad)`; };
+
+  const dispense = () => {
+    acc.current = 0;
+    const left = notes.map((_, i) => i).filter((i) => !got.includes(i));
+    setCur(left[Math.floor(Math.random() * left.length)]);
+    setShake((k) => k + 1);
+    setPhase("drop");
+    later(() => setPhase("ready"), 1100);
+  };
+  const advance = (d: number) => {
+    angle.current += d; acc.current += d; paint();
+    if (acc.current >= Math.PI * 2) dispense();
+  };
+  // a tap (or Enter) turns the rest of the circle by itself
+  const autoTurn = () => {
+    if (busy) return;
+    cancelAnimationFrame(anim.current);
+    let last = performance.now();
+    const step = (now: number) => {
+      const d = Math.min(Math.PI * 2 - acc.current, ((now - last) / 1000) * Math.PI * 2.6); last = now;
+      advance(Math.max(d, 0.001));
+      if (acc.current > 0 && acc.current < Math.PI * 2) anim.current = requestAnimationFrame(step);
+    };
+    if (prefersReducedMotion()) advance(Math.PI * 2 - acc.current); else anim.current = requestAnimationFrame(step);
+  };
+  const at = (e: React.PointerEvent) => {
+    const r = handle.current!.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+  };
+  const onDown = (e: React.PointerEvent) => {
+    if (busy) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { last: at(e), moved: 0 };
+  };
+  const onMove = (e: React.PointerEvent) => {
+    const g = drag.current; if (!g || busy) return;
+    const a = at(e);
+    let d = a - g.last; if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2;
+    g.last = a; g.moved += Math.abs(d);
+    if (d > 0) advance(d); // ratchet: clockwise only
+  };
+  const onUp = () => { const g = drag.current; drag.current = null; if (g && g.moved < 0.15) autoTurn(); };
+
+  const openCapsule = () => {
+    if (phase !== "ready") return;
+    setPhase("open");
+    later(() => { setGot((g) => [...g, cur]); setPhase("idle"); }, 1700);
+  };
+  const hue = `hue-rotate(${CAPSULE_HUE[cur % CAPSULE_HUE.length] ?? 0}deg)`;
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 40, alignItems: "center" }}>
+      {/* the machine */}
+      <div style={{ position: "relative", width: "min(330px, 78vw)", margin: "0 auto", paddingBottom: 110 }}>
+        <div key={shake} className={shake ? "se-shake" : ""} style={{ position: "relative" }}>
+          <div className="se-holo" style={{ position: "absolute", inset: "10% -10% 0", borderRadius: "40%", filter: "blur(60px)", opacity: 0.45 }} />
+          <img src={`${GACHA}/gacha-machine.webp`} alt={t("Автомат с капсулами", "Capsule machine")} draggable={false} style={{ position: "relative", display: "block", width: "100%", userSelect: "none" }} />
+          {done && <span style={{ ...wide, position: "absolute", left: "50%", top: "22%", transform: "translate(-50%,-50%) rotate(-12deg)", background: C.lime, color: C.bg, fontWeight: 900, fontSize: 22, padding: "8px 16px", borderRadius: 8, boxShadow: `0 0 30px ${C.lime}` }}>SOLD OUT</span>}
+          <div ref={handle} role="button" tabIndex={0} aria-label={t("Повернуть ручку", "Turn the handle")} aria-disabled={busy}
+            onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); autoTurn(); } }}
+            style={{ position: "absolute", left: "49.7%", top: "64.8%", width: "37%", aspectRatio: "400 / 353", transform: "translate(-50%,-50%)", cursor: busy ? "not-allowed" : "grab", touchAction: "none", filter: busy ? "saturate(.5)" : "drop-shadow(0 0 14px rgba(255,43,214,.6))", transition: "filter .3s" }}>
+            <img src={`${GACHA}/gacha-handle.webp`} alt="" draggable={false} style={{ width: "100%", display: "block", pointerEvents: "none", userSelect: "none" }} />
+          </div>
+        </div>
+        {/* the capsule */}
+        {phase !== "idle" && (
+          <button onClick={openCapsule} aria-label={t("Открыть капсулу", "Open the capsule")} className={phase === "drop" ? "se-roll" : phase === "ready" ? "se-wobble" : ""}
+            style={{ position: "absolute", left: "50%", bottom: 0, width: phase === "open" ? "84%" : "34%", transform: "translateX(-50%)", cursor: phase === "ready" ? "pointer" : "default", zIndex: 3 }}>
+            <img src={`${GACHA}/${phase === "open" ? "capsule-open" : "capsule-closed"}.webp`} alt="" draggable={false} className={phase === "open" ? "se-burst" : ""} style={{ width: "100%", display: "block", filter: `${hue} drop-shadow(0 10px 20px rgba(0,0,0,.5))` }} />
+            {phase === "open" && cur >= 0 && (
+              <span className="se-pull" style={{ ...wide, position: "absolute", left: "50%", top: "-10%", whiteSpace: "nowrap", fontWeight: 800, fontSize: "clamp(1rem, 2vw, 1.3rem)", padding: "14px 22px", borderRadius: 999, background: stickers[cur % stickers.length], color: C.bg, border: "4px solid #fff", boxShadow: `0 6px 0 rgba(0,0,0,.2), 0 0 50px ${stickers[cur % stickers.length]}` }}>
+                <small style={{ display: "block", fontSize: 10, letterSpacing: ".2em" }}>★ {RARITY[cur % RARITY.length]} ★ NEW!</small>{notes[cur]}
+              </span>
+            )}
+          </button>
+        )}
+        <p style={{ position: "absolute", left: 0, right: 0, bottom: phase === "idle" ? 40 : -34, textAlign: "center", fontSize: 14, fontWeight: 700, letterSpacing: ".25em", color: phase === "ready" ? C.lime : C.cyan, textShadow: `0 0 12px ${C.cyan}` }} className={phase === "ready" || phase === "idle" ? "se-blink" : ""}>
+          {done ? t("КОЛЛЕКЦИЯ СОБРАНА ♡", "COLLECTION COMPLETE ♡") : phase === "ready" ? t("ТАПНИ ПО КАПСУЛЕ", "TAP THE CAPSULE") : phase === "idle" ? t("↻ КРУТИ РУЧКУ", "↻ TURN THE HANDLE") : ""}
+        </p>
+      </div>
+
+      {/* the album */}
+      <div style={{ background: "#fff", borderRadius: 24, padding: "26px clamp(16px,3vw,34px)", boxShadow: `0 0 0 6px ${C.cyan}, 0 30px 80px rgba(34,240,255,.2)`, color: C.bg }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 18 }}>
+          <span style={{ ...wide, fontWeight: 900, fontSize: 18 }}>STICKER BOOK</span>
+          <span style={{ ...mono, fontSize: 13 }}>{got.length} / {notes.length}</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center" }}>
+          {notes.map((note, i) => {
+            const has = got.includes(i);
+            return has ? (
+              <span key={note} className="se-sticker se-stick" style={{ ...wide, fontWeight: 700, fontSize: "clamp(.85rem, 1.5vw, 1.05rem)", padding: "12px 20px", borderRadius: [999, 18, 999, 30, 12][i % 5], background: stickers[i % stickers.length], color: C.bg, border: "4px solid #fff", outline: "1px solid rgba(0,0,0,.12)", boxShadow: "0 6px 0 rgba(0,0,0,.15), inset 0 3px 0 rgba(255,255,255,.5)", transform: `rotate(${[-6, 4, -2, 7, -4, 3][i % 6]}deg)` }}>{note}</span>
+            ) : (
+              <span key={note} style={{ ...mono, fontSize: 14, padding: "12px 20px", minWidth: 110, textAlign: "center", borderRadius: [999, 18, 999, 30, 12][i % 5], border: "2px dashed rgba(7,4,13,.25)", color: "rgba(7,4,13,.35)" }}>? #{String(i + 1).padStart(2, "0")}</span>
+            );
+          })}
+        </div>
+        {done && <button onClick={() => setGot([])} style={{ ...mono, display: "block", margin: "20px auto 0", fontSize: 12, color: C.pink, textDecoration: "underline" }}>{t("собрать заново", "collect again")}</button>}
+      </div>
+    </div>
+  );
+}
+
 export default function SyntheticWorld({ perfume }: WorldProps) {
   const [, navigate] = useLocation();
   const { lang, setLang, t } = useLang();
@@ -130,6 +256,19 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
         .se-blink { animation: se-bl 1s steps(2) infinite; } @keyframes se-bl { 50% { opacity: 0; } }
         @keyframes se-pop { from { transform: scale(.9); opacity: 0; } }
         .se-coin:hover { transform: translateY(-3px); } .se-coin:active { transform: translateY(3px); }
+        .se-shake { animation: se-shake .55s cubic-bezier(.36,.07,.19,.97); }
+        @keyframes se-shake { 15%,55% { transform: translateX(-7px) rotate(-1.5deg); } 35%,75% { transform: translateX(7px) rotate(1.5deg); } }
+        .se-roll { animation: se-roll 1.1s cubic-bezier(.3,1.4,.5,1) both; }
+        @keyframes se-roll { 0% { transform: translate(-50%, -230%) scale(.35); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(-50%, 0) scale(1) rotate(360deg); } }
+        .se-wobble { animation: se-wob 1.2s ease-in-out infinite; }
+        @keyframes se-wob { 0%,100% { transform: translateX(-50%) rotate(0); } 25% { transform: translateX(-50%) rotate(-8deg); } 75% { transform: translateX(-50%) rotate(8deg); } }
+        .se-burst { animation: se-burst .45s cubic-bezier(.2,1.6,.4,1) both; }
+        @keyframes se-burst { from { transform: scale(.4); opacity: .3; } }
+        .se-pull { transform: translate(-50%, 0); animation: se-pull .7s cubic-bezier(.2,1.8,.4,1) .15s both; }
+        @keyframes se-pull { from { transform: translate(-50%, 120%) scale(.2); opacity: 0; } }
+        .se-stick { animation: se-stick .5s cubic-bezier(.2,1.8,.4,1); }
+        @keyframes se-stick { from { scale: 1.8; opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { .se-shake, .se-roll, .se-wobble, .se-burst, .se-pull, .se-stick { animation: none; } }
         @media (prefers-reduced-motion: reduce) { .se-holo, .se-marquee, .se-glitch::before, .se-glitch::after, .se-bar { animation: none; } }
       `}</style>
       <RgbCursor />
@@ -176,12 +315,8 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
 
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "100px clamp(16px,4vw,40px)" }}>
         <section style={{ marginBottom: 120 }}>
-          <H n="01" title={t("стикеры", "stickers")} sub={t("ноты · собери все", "notes · collect them all")} />
-          <div style={{ background: "#fff", borderRadius: 24, padding: "30px clamp(16px,3vw,40px)", display: "flex", flexWrap: "wrap", gap: 18, justifyContent: "center", boxShadow: `0 0 0 6px ${C.cyan}, 0 30px 80px rgba(34,240,255,.2)` }}>
-            {notes.map((note, i) => (
-              <span key={note} className="se-sticker" style={{ ...wide, fontWeight: 700, fontSize: "clamp(.9rem, 1.6vw, 1.15rem)", padding: "14px 22px", borderRadius: [999, 18, 999, 30, 12][i % 5], background: STICKERS[i % STICKERS.length], color: C.bg, border: "4px solid #fff", outline: "1px solid rgba(0,0,0,.12)", boxShadow: "0 6px 0 rgba(0,0,0,.15), inset 0 3px 0 rgba(255,255,255,.5)", transform: `rotate(${[-6, 4, -2, 7, -4, 3][i % 6]}deg)` }}>{note}</span>
-            ))}
-          </div>
+          <H n="01" title={t("гачапон", "gachapon")} sub={t("ноты · собери все", "notes · collect them all")} />
+          <Gachapon notes={notes} stickers={STICKERS} t={t} />
         </section>
 
         <section style={{ marginBottom: 120 }}>
