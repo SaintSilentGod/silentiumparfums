@@ -143,7 +143,7 @@ function Censer() {
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => { if (ref.current) ref.current.style.transform = `rotate(${Math.sin(window.scrollY / 240) * 9}deg)`; });
+      raf = requestAnimationFrame(() => { if (ref.current) ref.current.style.transform = `rotate(${Math.sin(window.scrollY / 220) * 10}deg)`; });
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -151,13 +151,15 @@ function Censer() {
   }, []);
   return (
     <div aria-hidden style={{ position: "relative", height: "100%", display: "flex", justifyContent: "center" }}>
-      <div ref={ref} className="sn-sway" style={{ position: "relative", height: "min(78vh, 720px)", transformOrigin: "50% 0", transition: "transform .6s cubic-bezier(.3,.7,.4,1)" }}>
+      <div ref={ref} style={{ position: "relative", height: "min(80vh, 720px)", transformOrigin: "50% 0", transition: "transform .6s cubic-bezier(.3,.7,.4,1)" }}>
+      <div className="sn-sway" style={{ position: "relative", height: "100%", transformOrigin: "50% 0" }}>
         <img src={`${IMG}/censer.webp`} alt="" style={{ height: "100%", display: "block", filter: "drop-shadow(0 20px 40px rgba(0,0,0,.6)) brightness(1.05)" }} />
         <div style={{ position: "absolute", left: "50%", bottom: "16%", width: 0, height: 0 }}>
           <img className="sn-smoke a" src={`${IMG}/smoke-1.webp`} alt="" />
           <img className="sn-smoke b" src={`${IMG}/smoke-3.webp`} alt="" />
           <img className="sn-smoke c" src={`${IMG}/smoke-1.webp`} alt="" />
         </div>
+      </div>
       </div>
     </div>
   );
@@ -237,10 +239,10 @@ export default function SeanceWorld({ perfume }: WorldProps) {
   ];
 
   return (
-    <div style={{ background: C.bg, color: C.ink, minHeight: "100vh", overflowX: "hidden", ...serif }}>
+    <div style={{ background: C.bg, color: C.ink, minHeight: "100vh", overflowX: "clip", ...serif }}>
       <style>{`
         .sn-breathe { animation: sn-breathe 4s ease-in-out infinite; } @keyframes sn-breathe { 50% { opacity: .35; } }
-        .sn-sway { animation: sn-sway 6s ease-in-out infinite; } @keyframes sn-sway { 50% { translate: 0 6px; } }
+        .sn-sway { animation: sn-sway 5s ease-in-out infinite; } @keyframes sn-sway { 0%,100% { rotate: -4deg; } 50% { rotate: 4deg; } }
         .sn-smoke { position: absolute; bottom: 0; width: 120px; transform-origin: 50% 100%; opacity: 0; pointer-events: none; animation: sn-rise 9s ease-out infinite; }
         .sn-smoke.a { left: -70px; } .sn-smoke.b { left: -30px; width: 90px; animation-delay: 3s; } .sn-smoke.c { left: -60px; animation-delay: 6s; transform: scaleX(-1); }
         @keyframes sn-rise { 0% { opacity: 0; translate: 0 30px; scale: .6 .5; } 20% { opacity: .75; } 100% { opacity: 0; translate: 20px -420px; scale: 1.3 1.6; } }
@@ -257,8 +259,9 @@ export default function SeanceWorld({ perfume }: WorldProps) {
         .sn-arch:hover img { transform: scale(1.06); filter: sepia(.1) brightness(1); }
         @media (prefers-reduced-motion: reduce) { .sn-breathe, .sn-sway, .sn-smoke, .sn-flame, .sn-stamped { animation: none; } .sn-smoke { opacity: .5; } }
         @media (max-width: 820px) {
-          .sn-split { grid-template-columns: 1fr !important; }
-          .sn-censer { position: relative !important; height: 52vh !important; top: 0 !important; }
+          .sn-split { display: block !important; }
+          .sn-censer { height: 100svh !important; margin-bottom: -100svh; opacity: .45; z-index: 0; pointer-events: none; }
+          .sn-pages { position: relative; z-index: 1; }
           .sn-intro { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -318,7 +321,7 @@ export default function SeanceWorld({ perfume }: WorldProps) {
         <Title kicker={t("Как раскрывается на коже", "How it unfolds on skin")} title={t("Три страницы одной ночи", "Three pages of one night")} />
         <div className="sn-split" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 40, marginTop: 40 }}>
           <div className="sn-censer" style={{ position: "sticky", top: 0, height: "100vh" }}><Censer /></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "clamp(40px, 10vh, 110px)", padding: "6vh 0" }}>
+          <div className="sn-pages" style={{ display: "flex", flexDirection: "column", gap: "clamp(40px, 10vh, 110px)", padding: "6vh 0" }}>
             {g.drydown.map((d, i) => (
               <Page key={i} i={i} when={L(d.when)} text={L(d.text)} notes={n[d.notes] ? pick(lang, n[d.notes]!) : []} />
             ))}
