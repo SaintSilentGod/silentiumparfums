@@ -457,6 +457,44 @@ export const perfumes: Perfume[] = [
     accentColorDim: "rgba(196,96,122,0.35)",
     radarFill: "rgba(196,96,122,0.12)",
     keywords: { ru: "СЫРОЙ · БОГАТЫЙ · ИНТОКСИЦИРУЮЩИЙ", en: "RAW · RICH · INTOXICATING" },
+    guide: {
+      plain: {
+        ru: "Сахар, цветущий апельсин и пудра. Необычная гурманика, от которой невозможно оторваться. Самый мощный аромат коллекции: его слышно за 10–15 метров, и рядом с ним остальные ароматы просто меркнут.",
+        en: "Sugar, orange blossom and powder. An unusual gourmand you can't pull away from. The most powerful scent in the collection: people notice it 10–15 metres away, and every other perfume in the room simply fades.",
+      },
+      drydown: [
+        { when: { ru: "Первые минуты", en: "First minutes" }, notes: "top", text: { ru: "Сразу сахар и чуть цветущего апельсина. Нероли, роза и розовый перец — ярко, сладко и празднично.", en: "Sugar straight away, with a touch of orange blossom. Neroli, rose and pink pepper — bright, sweet and festive." } },
+        { when: { ru: "Через час", en: "After an hour" }, notes: "heart", text: { ru: "Становится пудровым и мягким. Тёплая корица обволакивает, сладость никуда не уходит.", en: "It turns powdery and soft. Warm cinnamon wraps around you, the sweetness stays." } },
+        { when: { ru: "До самого утра", en: "Until morning" }, notes: "base", text: { ru: "Сахарная пудровая база: ваниль, тонка, карамель и амбра. Именно за ней оборачиваются.", en: "A sugary, powdery base: vanilla, tonka, caramel and amber. This is what makes people turn around." } },
+      ],
+      facets: [
+        { label: { ru: "Сладость", en: "Sweetness" }, value: 95 },
+        { label: { ru: "Карамель и ваниль", en: "Caramel & vanilla" }, value: 90 },
+        { label: { ru: "Пудровость", en: "Powderiness" }, value: 84 },
+        { label: { ru: "Цветы", en: "Flowers" }, value: 55 },
+        { label: { ru: "Пряность", en: "Spice" }, value: 40 },
+        { label: { ru: "Дерево", en: "Wood" }, value: 32 },
+      ],
+      longevity: { ru: "10+ часов", en: "10+ hours" },
+      sillage: { ru: "Огромный — диффузия 10–15 метров", en: "Enormous — 10–15 metres of diffusion" },
+      season: { ru: "Лучше всего зима и весна, но подойдёт в любой сезон", en: "Best in winter and spring, but works any season" },
+      time: { ru: "Вечер: свидание, мероприятие, выход", en: "Evening: a date, an event, a night out" },
+      tip: { ru: "Начните с одного распыления — этого хватит, чтобы вас заметили.", en: "Start with one spray — that's enough to be noticed." },
+      scenes: {
+        ru: [
+          "Заходишь в комнату — и через минуту тебя спрашивают, чем ты пахнешь.",
+          "Утром подушка всё ещё пахнет тобой.",
+          "Сахарная пудра на губах после десерта.",
+          "Свидание, после которого тебе пишут первым.",
+        ],
+        en: [
+          "You walk into a room — and a minute later someone asks what you're wearing.",
+          "In the morning the pillow still smells of you.",
+          "Powdered sugar on your lips after dessert.",
+          "A date after which they text you first.",
+        ],
+      },
+    },
   },
   {
     id: "summer-of-2009",
