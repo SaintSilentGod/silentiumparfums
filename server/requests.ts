@@ -1,5 +1,6 @@
 // Fragrance requests: validate, send to Telegram, keep a copy in Supabase.
-// Platform-neutral — wrapped by api/request.ts (Vercel), netlify/functions/request.mts (Netlify),
+// Platform-neutral — wrapped by functions/api/request.ts (Cloudflare Pages), api/request.ts (Vercel),
+// netlify/functions/request.mts (Netlify),
 // the Express server (server/index.ts) and the Vite dev middleware.
 //
 // Env (server-side only, never prefix with VITE_):
