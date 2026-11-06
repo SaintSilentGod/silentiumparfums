@@ -14,6 +14,22 @@ export interface RadarAxis {
   value: number;
 }
 
+type L10n = { ru: string; en: string };
+
+// Plain-language guide shown on a perfume page: what it smells like, how it changes on skin,
+// how loud and long it is. Written for someone who has never smelled it.
+export interface PerfumeGuide {
+  plain: L10n;
+  drydown: { when: L10n; text: L10n; notes: "top" | "heart" | "base" }[];
+  facets: { label: L10n; value: number }[];
+  longevity: L10n;
+  sillage: L10n;
+  season: L10n;
+  time: L10n;
+  tip?: L10n;
+  scenes: { ru: string[]; en: string[] };
+}
+
 export interface Perfume {
   id: string;
   name: string;
@@ -31,6 +47,7 @@ export interface Perfume {
   accentColorDim: string;    // rgba dim version for radar/glow
   radarFill: string;         // rgba fill for radar chart
   keywords: { ru: string; en: string };
+  guide?: PerfumeGuide;
 }
 
 export const perfumes: Perfume[] = [
@@ -74,6 +91,43 @@ export const perfumes: Perfume[] = [
     accentColorDim: "rgba(168,144,96,0.35)",
     radarFill: "rgba(168,144,96,0.12)",
     keywords: { ru: "СЫРОЙ · МИСТИЧЕСКИЙ · НЕВИДИМЫЙ", en: "RAW · MYSTICAL · UNSEEN" },
+    guide: {
+      plain: {
+        ru: "Ладан и дым в старой каменной часовне ночью. Холодный воздух с гор, догоревшие свечи, старые книги — и чувство, что ты здесь не один.",
+        en: "Incense and smoke in an old stone chapel at night. Cold mountain air, burnt-down candles, old books — and the feeling that you're not alone.",
+      },
+      drydown: [
+        { when: { ru: "Первые минуты", en: "First minutes" }, notes: "top", text: { ru: "Холодный горный воздух, вода и бергамот. Как будто с мороза зашёл в тёмную часовню.", en: "Cold mountain air, water and bergamot. As if you stepped out of the frost into a dark chapel." } },
+        { when: { ru: "Через полчаса", en: "After half an hour" }, notes: "heart", text: { ru: "Ладан, смолы и сухая старая бумага. Дым поднимается и заполняет всё вокруг.", en: "Incense, resins and dry old paper. The smoke rises and fills everything around." } },
+        { when: { ru: "Через несколько часов и до утра", en: "Hours later, until morning" }, notes: "base", text: { ru: "Берёзовый дёготь и тёплое сандаловое дерево — как угли, которые ещё тлеют.", en: "Birch tar and warm sandalwood — like embers that are still smouldering." } },
+      ],
+      facets: [
+        { label: { ru: "Дым", en: "Smoke" }, value: 96 },
+        { label: { ru: "Ладан и смолы", en: "Incense & resin" }, value: 90 },
+        { label: { ru: "Дерево", en: "Wood" }, value: 72 },
+        { label: { ru: "Свежесть", en: "Freshness" }, value: 34 },
+        { label: { ru: "Сладость", en: "Sweetness" }, value: 8 },
+      ],
+      longevity: { ru: "12+ часов", en: "12+ hours" },
+      sillage: { ru: "Очень мощный — заполняет комнату и остаётся после вас", en: "Huge — fills the room and stays after you leave" },
+      season: { ru: "Осень и зима", en: "Autumn and winter" },
+      time: { ru: "Вечер и ночь", en: "Evening and night" },
+      tip: { ru: "Достаточно 1–2 распылений. Больше — и он будет душить.", en: "1–2 sprays are enough. More and it will smother." },
+      scenes: {
+        ru: [
+          "Заходишь погреться в пустую церковь — внутри пахнет воском и ладаном.",
+          "Открываешь старую книгу, которую не трогали сто лет.",
+          "Костёр давно догорел, а дым всё ещё держится на свитере.",
+          "Ночь в горах: холодный воздух, тишина и чьё-то присутствие за спиной.",
+        ],
+        en: [
+          "You step into an empty church to get warm — it smells of wax and incense.",
+          "You open an old book nobody has touched in a hundred years.",
+          "The fire died long ago, but the smoke still clings to your sweater.",
+          "Night in the mountains: cold air, silence and someone standing behind you.",
+        ],
+      },
+    },
   },
   {
     id: "sunlit-memories",
