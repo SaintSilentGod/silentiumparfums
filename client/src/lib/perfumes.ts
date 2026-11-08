@@ -577,6 +577,44 @@ export const perfumes: Perfume[] = [
     accentColorDim: "rgba(184,146,58,0.35)",
     radarFill: "rgba(184,146,58,0.12)",
     keywords: { ru: "БЕЛЫЙ · ЦВЕТОЧНЫЙ · СВЯЩЕННЫЙ", en: "WHITE · FLORAL · SACRED" },
+    guide: {
+      plain: {
+        ru: "Сад белых цветов ранним утром. Лилия, жасмин и гардения — чистые, светлые и нежные, без приторности. К вечеру под цветами проступает тёплая кожа: мягкое дерево, мускус и мох.",
+        en: "A garden of white flowers early in the morning. Lily, jasmine and gardenia — clean, bright and tender, never cloying. By evening warm skin shows through the flowers: soft wood, musk and moss.",
+      },
+      drydown: [
+        { when: { ru: "Утро · первые минуты", en: "Morning · first minutes" }, notes: "top", text: { ru: "Свежо и воздушно, как будто открыли калитку в сад после росы. Белые цветы ещё прохладные.", en: "Fresh and airy, like opening the garden gate after the dew. The white flowers are still cool." } },
+        { when: { ru: "Полдень · через час", en: "Midday · after an hour" }, notes: "heart", text: { ru: "Раскрывается сердце: лилия, жасмин, гардения и франжипани. Сливочно, светло и тепло, как цветы на солнце.", en: "The heart opens: lily, jasmine, gardenia and frangipani. Creamy, bright and warm, like flowers in the sun." } },
+        { when: { ru: "Вечер · до конца дня", en: "Evening · until the end of the day" }, notes: "base", text: { ru: "Цветы затихают. Остаются дерево, амбра, мускус, пачули и дубовый мох — как тень старого дуба в конце дорожки.", en: "The flowers grow quiet. What stays is wood, ambergris, musk, patchouli and oakmoss — like the shade of an old oak at the end of the path." } },
+      ],
+      facets: [
+        { label: { ru: "Белые цветы", en: "White flowers" }, value: 95 },
+        { label: { ru: "Чистота и свежесть", en: "Cleanness & freshness" }, value: 74 },
+        { label: { ru: "Сливочность", en: "Creaminess" }, value: 62 },
+        { label: { ru: "Мускус", en: "Musk" }, value: 55 },
+        { label: { ru: "Дерево и мох", en: "Wood & moss" }, value: 46 },
+        { label: { ru: "Сладость", en: "Sweetness" }, value: 28 },
+      ],
+      longevity: { ru: "8+ часов", en: "8+ hours" },
+      sillage: { ru: "Средний — мягкое облако вокруг вас", en: "Moderate — a soft cloud around you" },
+      season: { ru: "Лучше всего весна и лето", en: "Best in spring and summer" },
+      time: { ru: "День: прогулка, свадьба, тихий праздник", en: "Daytime: a walk, a wedding, a quiet celebration" },
+      tip: { ru: "Нанесите на запястья и кончики волос — белые цветы лучше раскрываются в тепле.", en: "Apply to wrists and the ends of your hair — white flowers open best in warmth." },
+      scenes: {
+        ru: [
+          "Сад при монастыре, где пахнет лилиями и мокрым камнем.",
+          "Белое платье, которое достают из шкафа раз в год.",
+          "Букет невесты, который ещё никто не трогал.",
+          "Тишина в саду сразу после колокола.",
+        ],
+        en: [
+          "A cloister garden smelling of lilies and wet stone.",
+          "A white dress taken out of the wardrobe once a year.",
+          "A bride's bouquet nobody has touched yet.",
+          "The quiet in the garden right after the bell.",
+        ],
+      },
+    },
   },
   {
     id: "almost-nothing",
