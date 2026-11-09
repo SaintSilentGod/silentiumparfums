@@ -8,11 +8,13 @@ import { LangProvider } from "./contexts/LangContext";
 import Home from "./pages/Home";
 import { lazy, Suspense } from "react";
 
-// The map pulls in three.js; load it only when /map is opened
+// The nebula pulls in three.js; load it only when /nebula is opened. /map is now the ladder descent.
 const NebulaMap = lazy(() => import("./pages/NebulaMap"));
+const Descent = lazy(() => import("./pages/Descent"));
 const Layering = lazy(() => import("./pages/Layering"));
 const LayeringRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#07060a" }} />}><Layering /></Suspense>;
-const MapRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#030208" }} />}><NebulaMap /></Suspense>;
+const MapRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#050408" }} />}><Descent /></Suspense>;
+const NebulaRoute = () => <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#030208" }} />}><NebulaMap /></Suspense>;
 import PerfumePage from "./pages/PerfumePage";
 
 function Router() {
@@ -20,6 +22,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/map" component={MapRoute} />
+      <Route path="/nebula" component={NebulaRoute} />
       <Route path="/layering" component={LayeringRoute} />
       <Route path="/perfume/:id" component={PerfumePage} />
       <Route path="/404" component={NotFound} />
