@@ -1,6 +1,8 @@
 // synthetic ecstasy — Y2K Tokyo at 4 a.m.
-// Holographic chrome, acid colours, RGB-split cursor, notes as a sheet of puffy stickers,
-// profile as a neon equaliser, memories as SMS on a flip phone, request via an INSERT COIN button.
+// A neon alley after rain behind chrome glitch type, an RGB-split cursor; the description is a purikura
+// print and a konbini receipt; the drydown is a vending machine dropping one can per stage as you scroll;
+// the notes come out of a gachapon into a sticker book; the profile is a neon equaliser; the scenes are a
+// purikura sticker sheet; memories are SMS on a flip phone; and the request is an INSERT COIN button.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useLocation } from "wouter";
@@ -212,6 +214,127 @@ function Gachapon({ notes, stickers, t }: { notes: string[]; stickers: string[];
   );
 }
 
+// ── What it smells like: a purikura sticker print and a 24-hour-store receipt ──
+function Purikura({ plain, facts, tip, t }: { plain: string; facts: [string, string][]; tip?: string; t: (ru: string, en: string) => string }) {
+  const { ref, visible } = useReveal();
+  return (
+    <div ref={ref} className="se-two" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.05fr) minmax(0,.95fr)", gap: 50, alignItems: "center" }}>
+      <div style={{ position: "relative", padding: 14, borderRadius: 26, background: "linear-gradient(135deg, #ffd1f4, #c9f7ff 50%, #f4ffc9)", boxShadow: `0 0 0 4px #fff, 0 30px 80px ${C.pink}44`, transform: visible ? "rotate(-2.5deg)" : "rotate(-8deg) scale(.9)", opacity: visible ? 1 : 0, transition: "all .8s cubic-bezier(.2,1.6,.4,1)" }}>
+        <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", aspectRatio: "4 / 5" }}>
+          <img src={`${GACHA}/purikura.webp`} alt={t("Клубника, лёд и блёстки", "Strawberries, ice and glitter")} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: "saturate(1.25) brightness(1.05)" }} />
+          <span aria-hidden className="se-twinkle" style={{ position: "absolute", left: "8%", top: "6%", fontSize: 34, color: "#fff", textShadow: `0 0 12px ${C.pink}` }}>✦</span>
+          <span aria-hidden className="se-twinkle" style={{ position: "absolute", right: "10%", top: "20%", fontSize: 22, color: "#fff", textShadow: `0 0 12px ${C.cyan}`, animationDelay: ".6s" }}>✧</span>
+          <span aria-hidden className="se-twinkle" style={{ position: "absolute", left: "14%", bottom: "24%", fontSize: 28, color: "#fff", textShadow: `0 0 12px ${C.lime}`, animationDelay: "1.1s" }}>♡</span>
+          <span style={{ ...wide, position: "absolute", left: "50%", bottom: "5%", transform: "translateX(-50%) rotate(-4deg)", whiteSpace: "nowrap", fontWeight: 900, fontSize: "clamp(1rem, 2.4vw, 1.6rem)", color: "#fff", WebkitTextStroke: `2px ${C.pink}`, textShadow: `3px 3px 0 ${C.cyan}` }}>SYNTHETIC ♡ 04:12</span>
+        </div>
+        <span style={{ ...mono, position: "absolute", right: 18, top: -14, padding: "4px 10px", borderRadius: 99, background: C.lime, color: C.bg, fontSize: 11, fontWeight: 700, transform: "rotate(6deg)" }}>プリクラ ★ 2003</span>
+      </div>
+      <div>
+        <p style={{ ...mono, fontSize: 12, color: C.cyan }}>[✦] {t("как он пахнет", "what it smells like")}</p>
+        <p style={{ fontSize: "clamp(1.15rem, 1.9vw, 1.5rem)", lineHeight: 1.6, marginTop: 14, color: C.white }}>{plain}</p>
+        {/* the receipt */}
+        <div style={{ ...mono, marginTop: 28, maxWidth: 380, padding: "18px 18px 26px", background: "#f6f3ec", color: "#1c1a22", fontSize: 13, lineHeight: 1.6, transform: "rotate(1.5deg)", boxShadow: "0 20px 40px rgba(0,0,0,.45)", WebkitMaskImage: "linear-gradient(#000 calc(100% - 10px), transparent calc(100% - 10px)), conic-gradient(from -45deg at bottom, #000 90deg, transparent 0) 0 100% / 14px 10px repeat-x", maskImage: "linear-gradient(#000 calc(100% - 10px), transparent calc(100% - 10px)), conic-gradient(from -45deg at bottom, #000 90deg, transparent 0) 0 100% / 14px 10px repeat-x" }}>
+          <p style={{ textAlign: "center", fontWeight: 700 }}>★ 24H KONBINI ★</p>
+          <p style={{ textAlign: "center", fontSize: 11 }}>{t("ЧЕК", "RECEIPT")} #0412 · 東京</p>
+          <p style={{ borderTop: "1px dashed #999", margin: "8px 0" }} />
+          {facts.map(([k, v]) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ textTransform: "uppercase", fontSize: 11 }}>{k}</span><span style={{ textAlign: "right" }}>{v}</span>
+            </div>
+          ))}
+          <p style={{ borderTop: "1px dashed #999", margin: "8px 0" }} />
+          {tip && <p style={{ fontSize: 12 }}>✎ {tip}</p>}
+          <p style={{ textAlign: "center", marginTop: 8, fontWeight: 700 }}>{t("ИТОГО", "TOTAL")}: ∞ ♡</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── The drydown: a vending machine drops one can per stage as you scroll ──
+const CANS = [`${GACHA}/can-1.webp`, `${GACHA}/can-2.webp`, `${GACHA}/can-3.webp`];
+const CAN_GLOW = ["#ff2bd6", "#b48cff", "#ffd23a"];
+const TRAY = { x: 0.497, y: 0.775 }; // the pick-up tray in vending.webp (2:3)
+
+function usePin<T extends HTMLElement>(enabled = true) {
+  const ref = useRef<T>(null);
+  const [p, setP] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let raf = 0;
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = ref.current; if (!el) return;
+        const r = el.getBoundingClientRect();
+        setP(Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - window.innerHeight))));
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [enabled]);
+  return { ref, p };
+}
+
+function Vending({ stages, t }: { stages: { when: string; text: string; notes: string }[]; t: (ru: string, en: string) => string }) {
+  const still = prefersReducedMotion();
+  const { ref, p } = usePin<HTMLElement>(!still);
+  const stage = still ? 0 : Math.min(2, Math.floor(p * 3.05));
+  return (
+    <section ref={ref} style={{ position: "relative", height: still ? "auto" : "330svh", background: `radial-gradient(ellipse at 30% 60%, ${CAN_GLOW[stage]}22, ${C.bg} 65%)`, transition: "background 1s" }}>
+      <div style={{ position: still ? "relative" : "sticky", top: 0, minHeight: "100svh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "80px clamp(16px,4vw,40px) 30px", overflow: "hidden" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+          <H n="✦" title={t("три банки", "three cans")} sub={t("как раскрывается на коже", "how it unfolds on skin")} />
+          <div className="se-two" style={{ display: "grid", gridTemplateColumns: "minmax(0,.8fr) minmax(0,1.2fr)", gap: "20px 60px", alignItems: "center" }}>
+            <div className="se-vend" style={{ position: "relative", width: "min(100%, 44svh)", aspectRatio: "2 / 3", margin: "0 auto" }}>
+              <img src={`${GACHA}/vending.webp`} alt={t("Торговый автомат с напитками", "A drinks vending machine")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: `0 0 80px ${CAN_GLOW[stage]}55` }} />
+              {/* the can that just dropped, lying in the tray */}
+              <img key={stage} className={still ? undefined : "se-drop"} src={CANS[stage]} alt="" aria-hidden style={{ position: "absolute", left: `${TRAY.x * 100}%`, top: `${TRAY.y * 100}%`, width: "10.5%", maxWidth: "none", transform: "translate(-50%, -50%) rotate(90deg)", filter: `drop-shadow(0 0 14px ${CAN_GLOW[stage]})` }} />
+            </div>
+            <div style={{ position: "relative", minHeight: "min(52svh, 440px)" }}>
+              {stages.map((s, i) => (
+                <article key={i} className="se-stage" style={{ position: still ? "relative" : "absolute", inset: still ? undefined : 0, display: "grid", gridTemplateColumns: "minmax(0,.55fr) minmax(0,1fr)", gap: 26, alignItems: "center", opacity: still || stage === i ? 1 : 0, transform: still || stage === i ? "none" : `translateY(${i < stage ? -30 : 30}px)`, transition: "opacity .6s ease, transform .8s cubic-bezier(.16,1,.3,1)", marginBottom: still ? 30 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <img className="se-spin" src={CANS[i]} alt="" style={{ width: "min(100%, 200px)", filter: `drop-shadow(0 0 30px ${CAN_GLOW[i]})` }} />
+                  </div>
+                  <div>
+                    <p style={{ ...mono, fontSize: 12, color: CAN_GLOW[i] }}>{String(i + 1).padStart(2, "0")} / 03 · ¥120</p>
+                    <p className="se-chrome" style={{ ...wide, fontWeight: 900, fontSize: "clamp(1.8rem, 3.6vw, 3rem)", lineHeight: 1, marginTop: 8 }}>{s.when}</p>
+                    <p style={{ fontSize: "clamp(1.02rem, 1.5vw, 1.2rem)", lineHeight: 1.6, marginTop: 14 }}>{s.text}</p>
+                    <p style={{ ...mono, fontSize: 12, color: C.dim, marginTop: 14, lineHeight: 1.7 }}>{s.notes}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+          {!still && <div aria-hidden style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 20 }}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 34, height: 4, borderRadius: 99, background: i <= stage ? CAN_GLOW[i] : "rgba(255,255,255,.15)", boxShadow: i <= stage ? `0 0 10px ${CAN_GLOW[i]}` : "none", transition: "all .4s" }} />)}</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Scenes on a sheet of purikura stickers ──
+const DOODLES = ["♡ 4:12", "★ konbini", "♪ ♪ ♪", "✧ UFO ✧"];
+
+function StickerSheet({ scenes }: { scenes: string[] }) {
+  return (
+    <div style={{ padding: "clamp(14px, 3vw, 30px)", borderRadius: 30, background: "linear-gradient(135deg, #ffc8f0, #b9f3ff 55%, #eaffb0)", boxShadow: `0 0 0 6px #fff, 0 30px 90px ${C.cyan}33` }}>
+      <div className="se-sheet" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(10px, 2vw, 20px)" }}>
+        {scenes.map((s, i) => (
+          <figure key={i} className="se-sticker" style={{ position: "relative", margin: 0, padding: 8, background: "#fff", borderRadius: 18, boxShadow: "0 8px 0 rgba(0,0,0,.12)", transform: `rotate(${[-3, 2, -1.5, 3][i]}deg)` }}>
+            <img src={`${GACHA}/scene-${i + 1}.webp`} alt={s} loading="lazy" style={{ display: "block", width: "100%", aspectRatio: "3 / 4", objectFit: "cover", borderRadius: 12, filter: "saturate(1.2)" }} />
+            <span style={{ ...wide, position: "absolute", left: 14, top: 14, padding: "3px 8px", borderRadius: 99, background: [C.pink, C.cyan, C.lime, "#ffd23a"][i], color: C.bg, fontSize: 10, fontWeight: 800 }}>{DOODLES[i]}</span>
+            <figcaption style={{ ...mono, fontSize: 12, lineHeight: 1.4, color: C.bg, padding: "8px 4px 2px", minHeight: "3em" }}>{s}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SyntheticWorld({ perfume }: WorldProps) {
   const [, navigate] = useLocation();
   const { lang, setLang, t } = useLang();
@@ -219,6 +342,16 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
   const notes = notesFlat(perfume, lang);
   const fragments = pick(lang, perfume.memoryFragments).map(fragmentText);
   const STICKERS = [C.pink, C.cyan, C.lime, "#ffd23a", "#b48cff", "#ff7a59"];
+  const g = perfume.guide!;
+  const Lp = (v: { ru: string; en: string }) => pick(lang, v);
+  const n = perfume.scentNotes;
+  const stages = g.drydown.map((d) => ({ when: Lp(d.when), text: Lp(d.text), notes: n[d.notes] ? pick(lang, n[d.notes]!).join(" · ") : "" }));
+  const facts: [string, string][] = [
+    [t("Стойкость", "Longevity"), Lp(g.longevity)],
+    [t("Шлейф", "Sillage"), Lp(g.sillage)],
+    [t("Сезон", "Season"), Lp(g.season)],
+    [t("Когда", "When"), Lp(g.time)],
+  ];
 
   const skin: DialogSkin = {
     overlay: "rgba(7,4,13,.85)",
@@ -234,7 +367,7 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
   };
 
   return (
-    <div style={{ ...mono, background: C.bg, color: C.white, minHeight: "100vh", overflowX: "hidden", cursor: "crosshair" }}>
+    <div style={{ ...mono, background: C.bg, color: C.white, minHeight: "100vh", overflowX: "clip", cursor: "crosshair" }}>
       <style>{`
         .se-holo { background: conic-gradient(from var(--se-a, 0deg) at 50% 50%, #ff2bd6, #22f0ff, #c8ff2e, #ffd23a, #b48cff, #ff2bd6); animation: se-rot 8s linear infinite; }
         @property --se-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
@@ -268,6 +401,12 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
         @keyframes se-pull { from { transform: translate(-50%, 120%) scale(.2); opacity: 0; } }
         .se-stick { animation: se-stick .5s cubic-bezier(.2,1.8,.4,1); }
         @keyframes se-stick { from { scale: 1.8; opacity: 0; } }
+        .se-drop { animation: se-drop .8s cubic-bezier(.5,0,.6,1.4) both; }
+        @keyframes se-drop { 0% { transform: translate(-50%, -620%) rotate(0deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-50%, -50%) rotate(90deg); } }
+        .se-spin { animation: se-spin 3.2s ease-in-out infinite; } @keyframes se-spin { 0%,100% { transform: scaleX(1) rotate(-4deg); } 50% { transform: scaleX(.82) rotate(4deg); } }
+        .se-twinkle { animation: se-tw 1.6s ease-in-out infinite; } @keyframes se-tw { 50% { transform: scale(.5) rotate(40deg); opacity: .4; } }
+        @media (max-width: 820px) { .se-two { grid-template-columns: minmax(0, 1fr) !important; } .se-stage { grid-template-columns: minmax(0, 1fr) !important; } .se-stage > div:first-child { display: none !important; } .se-vend { width: min(56%, 26svh) !important; } .se-sheet { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (prefers-reduced-motion: reduce) { .se-spin, .se-twinkle, .se-drop { animation: none; } }
         @media (prefers-reduced-motion: reduce) { .se-shake, .se-roll, .se-wobble, .se-burst, .se-pull, .se-stick { animation: none; } }
         @media (prefers-reduced-motion: reduce) { .se-holo, .se-marquee, .se-glitch::before, .se-glitch::after, .se-bar { animation: none; } }
       `}</style>
@@ -282,7 +421,8 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
       {/* hero */}
       <header style={{ position: "relative", minHeight: "92vh", overflow: "hidden", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", alignItems: "center", padding: "30px clamp(16px,5vw,70px)" }}>
         <div className="se-holo" style={{ position: "absolute", inset: "-30%", opacity: 0.2, filter: "blur(80px)" }} />
-        <img src={perfume.heroImage} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.25, mixBlendMode: "screen" }} />
+        <img src={perfume.heroImage} alt={t("Неоновый переулок в Токио после дождя", "A neon alley in Tokyo after the rain")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.75 }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${C.bg}f0 0%, ${C.bg}aa 40%, ${C.bg}33 75%), linear-gradient(transparent 70%, ${C.bg})` }} />
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)", backgroundSize: "40px 40px", maskImage: "linear-gradient(transparent, #000 60%)", WebkitMaskImage: "linear-gradient(transparent, #000 60%)" }} />
         <div style={{ position: "relative" }}>
           <p style={{ color: C.lime, fontSize: 13, letterSpacing: ".3em" }}>✦ NEW RELEASE ✦ 限定</p>
@@ -313,6 +453,12 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
         <div className="se-marquee rev" style={{ ...mono, fontWeight: 500, fontSize: 16 }}>{Array.from({ length: 2 }).map((_, k) => <span key={k} style={{ whiteSpace: "nowrap", paddingRight: 40 }}>{fragments.join("  ✧  ")}  ✧  </span>)}</div>
       </div>
 
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "110px clamp(16px,4vw,40px) 60px" }}>
+        <Purikura plain={Lp(g.plain)} facts={facts} tip={g.tip ? Lp(g.tip) : undefined} t={t} />
+      </section>
+
+      <Vending stages={stages} t={t} />
+
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "100px clamp(16px,4vw,40px)" }}>
         <section style={{ marginBottom: 120 }}>
           <H n="01" title={t("гачапон", "gachapon")} sub={t("ноты · собери все", "notes · collect them all")} />
@@ -326,9 +472,14 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
           </div>
         </section>
 
+        <section style={{ marginBottom: 120 }}>
+          <H n="03" title={t("4 утра", "4 a.m.")} sub={t("на что это похоже", "what it feels like")} />
+          <StickerSheet scenes={pick(lang, g.scenes)} />
+        </section>
+
         <section style={{ marginBottom: 120, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 50, alignItems: "center" }}>
           <div>
-            <H n="03" title={t("сообщения", "messages")} sub={t("которые пришли после полуночи", "that arrived after midnight")} />
+            <H n="04" title={t("сообщения", "messages")} sub={t("которые пришли после полуночи", "that arrived after midnight")} />
             <p style={{ fontSize: 15, lineHeight: 1.7, color: C.dim, maxWidth: 420 }}>{t("Пять SMS, которые ты так и не удалил. Ты не знаешь, что из этого было на самом деле.", "Five texts you never deleted. You don't know which of them really happened.")}</p>
           </div>
           <FlipPhone messages={fragments} t={t} />

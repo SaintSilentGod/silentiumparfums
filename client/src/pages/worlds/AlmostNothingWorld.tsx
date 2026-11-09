@@ -1,8 +1,10 @@
-// almost nothing — a second skin.
-// The page is almost nothing too: skin tone, vast quiet, hairline type. It is the one world you touch
-// rather than look at: the pointer leaves a warm blush on the "skin" that slowly fades, the notes
-// appear only when you press and hold a fingerprint, the profile is a sillage map that barely leaves
-// the body, and the request is leaving a trace.
+// almost nothing — distance.
+// It has almost no sillage, so the whole page is a walk from 2 metres to 0 cm, with a hairline counter
+// at the side. From far away there is only a figure by a window, blurred; scrolling brings you closer
+// until the collar of the white shirt fills the screen. At 50 cm the description appears; at 10 cm a
+// day on the skin (morning iron, daylight, night sheets); then the notes you press and hold like a
+// fingerprint, the scenes at 0 cm and, to send a request, a trace left on the skin.
+// The pointer leaves a warm blush that fades like body heat.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useLocation } from "wouter";
@@ -12,10 +14,84 @@ import RequestDialog, { type DialogSkin } from "@/components/RequestDialog";
 import { useReveal } from "@/lib/useReveal";
 import { fragmentText, pick, prefersReducedMotion, type WorldProps } from "./shared";
 
-const C = { skin: "#efe2d6", paper: "#f6eee6", blush: "#e5bba6", ink: "#5a4a42", dim: "rgba(90,74,66,.6)", faint: "rgba(90,74,66,.22)", whisper: "rgba(90,74,66,.12)" };
+const C = { skin: "#efe2d6", paper: "#f6eee6", milk: "#f7f2ec", blush: "#e5bba6", ink: "#5a4a42", dim: "rgba(90,74,66,.6)", faint: "rgba(90,74,66,.22)", whisper: "rgba(90,74,66,.12)" };
 const thin: CSSProperties = { fontFamily: "'Jost', 'Manrope', sans-serif", fontWeight: 200 };
 const light: CSSProperties = { fontFamily: "'Jost', 'Manrope', sans-serif", fontWeight: 300 };
 const IMG = "/images/almost-nothing";
+
+const bottleLook = { liquid: "#f1e2d6", liquidOpacity: 0.45, glass: "#fffaf6", cap: "#e8d5c6", capRoughness: 0.92, collar: "#d8c3b0" };
+const bottleLabel = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+  ctx.fillStyle = "#f3e7dc"; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#5a4a42"; ctx.textAlign = "center";
+  ctx.font = "200 104px 'Jost', sans-serif"; ctx.fillText("almost", w / 2, h * 0.47);
+  ctx.fillText("nothing", w / 2, h * 0.7);
+  ctx.font = "300 24px 'Jost', sans-serif"; ctx.fillStyle = "#9b867a"; ctx.fillText("s i l e n t i u m", w / 2, h * 0.88);
+};
+
+// 0 → 1 while a tall section scrolls past its sticky viewport
+function usePinProgress<T extends HTMLElement>(enabled = true) {
+  const ref = useRef<T>(null);
+  const [p, setP] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let raf = 0;
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = ref.current; if (!el) return;
+        const r = el.getBoundingClientRect();
+        setP(Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - window.innerHeight))));
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [enabled]);
+  return { ref, p };
+}
+
+// The distance to the person: sections carry data-cm marks (200 → 50 → 10 → 5 → 0) and the counter
+// interpolates between them as they cross the middle of the screen
+function useDistance() {
+  const [cm, setCm] = useState(200);
+  useEffect(() => {
+    let raf = 0;
+    const on = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const marks = [...document.querySelectorAll<HTMLElement>("[data-cm]")].map((el) => ({ y: el.getBoundingClientRect().top + window.scrollY, cm: Number(el.dataset.cm) })).sort((x, y) => x.y - y.y);
+        if (!marks.length) return;
+        const at = window.scrollY + window.innerHeight * 0.5 * Math.min(1, window.scrollY / window.innerHeight); // 200 cm exactly at the top
+        let v = marks[0].cm;
+        for (let i = 0; i < marks.length; i++) {
+          const m = marks[i], n = marks[i + 1];
+          if (at >= m.y) v = n ? (at < n.y ? m.cm + ((n.cm - m.cm) * (at - m.y)) / (n.y - m.y) : n.cm) : m.cm;
+        }
+        setCm(Math.round(v));
+      });
+    };
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", on); window.removeEventListener("resize", on); };
+  }, []);
+  return cm;
+}
+
+function DistanceMeter({ cm, t }: { cm: number; t: (ru: string, en: string) => string }) {
+  return (
+    <div aria-hidden className="an-meter" style={{ position: "fixed", left: "clamp(10px, 2.4vw, 30px)", top: "50%", transform: "translateY(-50%)", zIndex: 20, display: "flex", alignItems: "center", gap: 12, pointerEvents: "none", color: C.ink }}>
+      <div style={{ position: "relative", width: 1, height: "38vh", background: C.faint }}>
+        <span style={{ position: "absolute", left: -3, top: `${(1 - cm / 200) * 100}%`, width: 7, height: 7, marginTop: -3, borderRadius: "50%", background: C.ink, transition: "top .2s linear" }} />
+      </div>
+      <div>
+        <p style={{ ...thin, fontSize: 26, lineHeight: 1 }}>{cm}</p>
+        <p style={{ ...light, fontSize: 10, letterSpacing: ".25em", textTransform: "uppercase", color: C.dim }}>{t("см", "cm")}</p>
+      </div>
+    </div>
+  );
+}
 
 // What each note feels like on skin
 const NOTE_TEXT: Record<string, [string, string]> = {
@@ -137,47 +213,6 @@ function HoldNote({ note, text, t }: { note: string; text: string; t: (ru: strin
   );
 }
 
-// How close you have to be: each ring is a quality, its radius how far it carries
-function SillageMap({ axes, lang }: { axes: { key: string; label: { ru: string; en: string }; value: number }[]; lang: "ru" | "en" }) {
-  const { ref, visible } = useReveal();
-  const sorted = [...axes].sort((a, b) => b.value - a.value);
-  const cm = (v: number) => Math.max(2, Math.round((100 - v) * 1.6));
-  const rad = (centimetres: number) => Math.min(206, 22 + Math.sqrt(centimetres) * 17); // sqrt scale: the near rings get room
-  return (
-    <div ref={ref} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 40, alignItems: "center" }}>
-      <svg viewBox="-250 -235 500 470" style={{ width: "100%", maxWidth: 460, margin: "0 auto", display: "block" }} role="img" aria-label={lang === "ru" ? "Карта шлейфа" : "Sillage map"}>
-        {([["1 м", "1 m", 100], ["50 см", "50 cm", 50], ["10 см", "10 cm", 10]] as const).map(([ru, en, d]) => (
-          <g key={d}>
-            <circle r={rad(d)} fill="none" stroke="rgba(90,74,66,.18)" strokeDasharray="2 6" />
-            <text x={0} y={-rad(d) - 6} textAnchor="middle" style={{ ...light, fontSize: 14 }} fill={C.dim}>{lang === "ru" ? ru : en}</text>
-          </g>
-        ))}
-        {sorted.map((a, i) => {
-          const r = rad(cm(a.value)); // the more intimate, the closer to the skin
-          const ang = -Math.PI * 0.85 + (i / sorted.length) * Math.PI * 2;
-          return (
-            <g key={a.key} style={{ opacity: visible ? 1 : 0, transition: `opacity 1.6s ease ${i * 200}ms` }}>
-              <circle r={visible ? r : 0} fill={`rgba(229,187,166,${0.05 + (a.value / 100) * 0.08})`} stroke={C.blush} strokeOpacity=".7" style={{ transition: `r 2s cubic-bezier(.16,1,.3,1) ${i * 200}ms` }} />
-              <circle cx={Math.cos(ang) * r} cy={Math.sin(ang) * r} r="3" fill={C.ink} />
-              <text x={Math.cos(ang) * r + (Math.cos(ang) >= 0 ? 8 : -8)} y={Math.sin(ang) * r + 4} textAnchor={Math.cos(ang) >= 0 ? "start" : "end"} style={{ ...light, fontSize: 17 }} fill={C.ink}>{pick(lang, a.label)}</text>
-            </g>
-          );
-        })}
-        <circle r="5" fill={C.ink} />
-        <text y="24" textAnchor="middle" style={{ ...light, fontSize: 14, letterSpacing: 3 }} fill={C.dim}>{lang === "ru" ? "КОЖА" : "SKIN"}</text>
-      </svg>
-      <div>
-        {sorted.map((a) => (
-          <div key={a.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0", borderBottom: `1px solid ${C.whisper}` }}>
-            <span style={{ ...thin, fontSize: 22 }}>{pick(lang, a.label)}</span>
-            <span style={{ ...light, fontSize: 13, color: C.dim }}>{a.key === "sillage" ? (lang === "ru" ? "почти нет" : "almost none") : (lang === "ru" ? `ближе ${cm(a.value)} см` : `within ${cm(a.value)} cm`)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // Optional generated photo: renders nothing until the file exists
 function Photo({ src, alt, style }: { src: string; alt: string; style?: CSSProperties }) {
   const [ok, setOk] = useState(true);
@@ -190,6 +225,78 @@ function Whisper({ children, style }: { children: React.ReactNode; style?: CSSPr
   return <div ref={ref} style={{ ...style, opacity: visible ? 1 : 0.06, transition: "opacity 2.6s ease" }}>{children}</div>;
 }
 
+// ── 2 m → 50 cm: walking up to the figure by the window until the collar fills the screen ──
+const COLLAR = { x: 0.498, y: 0.39 }; // the shirt collar in window.webp (3:2)
+
+function Approach({ t, description }: { t: (ru: string, en: string) => string; description: string }) {
+  const still = prefersReducedMotion();
+  const { ref, p } = usePinProgress<HTMLElement>(!still);
+  const [vp, setVp] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => { const on = () => setVp({ w: window.innerWidth, h: window.innerHeight }); addEventListener("resize", on); return () => removeEventListener("resize", on); }, []);
+  const s0 = Math.max(vp.w / 1536, vp.h / 1024);
+  const origin = `${(vp.w - 1536 * s0) / 2 + COLLAR.x * 1536 * s0}px ${(vp.h - 1024 * s0) / 2 + COLLAR.y * 1024 * s0}px`;
+  const walk = still ? 0 : Math.min(1, p / 0.8);
+  const scale = 1 + Math.pow(walk, 2.4) * 5.5;
+  const blur = still ? 0 : Math.max(0, 7 - walk * 9);
+  const close = still ? 0 : Math.max(0, Math.min(1, (p - 0.62) / 0.3)); // the close-up takes over
+  const titleOut = Math.min(1, p / 0.3);
+  return (
+    <section ref={ref} data-cm="200" style={{ position: "relative", height: still ? "100svh" : "320svh" }}>
+      <div style={{ position: still ? "relative" : "sticky", top: 0, height: "100svh", overflow: "hidden", background: C.milk }}>
+        <div style={{ position: "absolute", inset: 0, transformOrigin: origin, transform: `scale(${scale})`, filter: `blur(${blur}px)`, opacity: 0.55 + walk * 0.45, willChange: "transform, filter" }}>
+          <img src={`${IMG}/window.webp`} alt={t("Человек в белой рубашке у окна", "A person in a white shirt by the window")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+        <img src={`${IMG}/collar.webp`} alt={t("Воротник белой рубашки и шея крупным планом", "The collar of a white shirt and a neck, close up")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: close, transform: `scale(${1.12 - close * 0.12})` }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(247,242,236,${0.85 - walk * 0.6}) 85%)` }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 16px", pointerEvents: "none", opacity: 1 - titleOut, filter: `blur(${titleOut * 6}px)` }}>
+          <h1 style={{ ...thin, fontSize: "clamp(3rem, 9vw, 7.5rem)", letterSpacing: "-.03em", lineHeight: 0.95, color: C.ink, opacity: 0.55 }}>almost nothing</h1>
+          <p style={{ ...light, fontSize: "clamp(1rem, 1.5vw, 1.2rem)", color: C.dim, marginTop: 18, maxWidth: 460, lineHeight: 1.6, opacity: 0.7 }}>{description}</p>
+          <p className="an-breathe" style={{ ...light, fontSize: 11, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase", marginTop: 46 }}>{t("подойдите ближе", "come closer")} ↓</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── 10 cm: one day on the skin ──
+const DAY = [
+  { img: `${IMG}/stage-morning.webp`, bg: "#f4f1ec", notes: { ru: ["Горячее железо", "Гедион"], en: ["Hot Iron", "Hedione"] } },
+  { img: `${IMG}/stage-day.webp`, bg: "#f3e2cf", notes: { ru: ["Iso E Super"], en: ["Iso E Super"] } },
+  { img: `${IMG}/stage-night.webp`, bg: "#d9c3b3", notes: { ru: ["Мускус"], en: ["Musk"] } },
+];
+
+function DayOnSkin({ stages, lang, t }: { stages: { when: string; text: string }[]; lang: "ru" | "en"; t: (ru: string, en: string) => string }) {
+  const still = prefersReducedMotion();
+  const { ref, p } = usePinProgress<HTMLElement>(!still);
+  const stage = still ? 0 : Math.min(2, Math.floor(p * 3.05));
+  return (
+    <section ref={ref} data-cm="10" style={{ position: "relative", zIndex: 3, height: still ? "auto" : "330svh", background: DAY[stage].bg, transition: "background 1.4s ease" }}>
+      <div style={{ position: still ? "relative" : "sticky", top: 0, minHeight: "100svh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "70px clamp(16px,5vw,64px) 30px" }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ ...light, fontSize: 12, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase" }}>10 {t("см", "cm")} · {t("как раскрывается на коже", "how it unfolds on skin")}</p>
+          <h2 style={{ ...thin, fontSize: "clamp(2.2rem, 5vw, 4rem)", marginTop: 8 }}>{t("Один день на коже", "One day on the skin")}</h2>
+        </div>
+        <div className="an-day" style={{ maxWidth: 1080, width: "100%", margin: "30px auto 0", display: "grid", gridTemplateColumns: "minmax(0,.9fr) minmax(0,1.1fr)", gap: "26px 70px", alignItems: "center" }}>
+          <div className="an-day-photo" style={{ position: "relative", aspectRatio: "4 / 5", maxHeight: "62svh", width: "100%", margin: "0 auto", borderRadius: 4, overflow: "hidden", boxShadow: "0 40px 80px rgba(90,74,66,.16)" }}>
+            {DAY.map((d, i) => <img key={d.img} src={d.img} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: still ? (i === 0 ? 1 : 0) : stage === i ? 1 : 0, transform: stage === i ? "scale(1)" : "scale(1.05)", transition: "opacity 1.4s ease, transform 3s ease" }} />)}
+          </div>
+          <div style={{ position: "relative", minHeight: "min(40svh, 330px)" }}>
+            {stages.map((s, i) => (
+              <article key={i} style={{ position: still ? "relative" : "absolute", inset: still ? undefined : 0, display: "flex", flexDirection: "column", justifyContent: "center", opacity: still || stage === i ? 1 : 0, filter: still || stage === i ? "blur(0)" : "blur(8px)", transition: "opacity 1.2s ease, filter 1.4s ease", marginBottom: still ? 30 : 0 }}>
+                <p style={{ ...light, fontSize: 11, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase" }}>{String(i + 1).padStart(2, "0")} / 03</p>
+                <p style={{ ...thin, fontSize: "clamp(2.6rem, 5.4vw, 4.4rem)", lineHeight: 1, marginTop: 10 }}>{s.when}</p>
+                <p style={{ ...light, fontSize: "clamp(1.05rem, 1.6vw, 1.25rem)", lineHeight: 1.65, marginTop: 16, color: "rgba(90,74,66,.9)" }}>{s.text}</p>
+                <p style={{ ...light, fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim, marginTop: 18 }}>{pick(lang, DAY[i].notes).join(" · ")}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        {!still && <div aria-hidden style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 24 }}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 40, height: 1, background: C.ink, opacity: i <= stage ? 0.8 : 0.2, transition: "opacity .4s" }} />)}</div>}
+      </div>
+    </section>
+  );
+}
+
 export default function AlmostNothingWorld({ perfume }: WorldProps) {
   const [, navigate] = useLocation();
   const { lang, setLang, t } = useLang();
@@ -197,13 +304,19 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
   const [traces, setTraces] = useState<{ x: number; y: number; r: number }[]>([]);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
+  const cm = useDistance();
+  const g = perfume.guide!;
+  const Lp = (v: { ru: string; en: string }) => pick(lang, v);
   const fragments = pick(lang, perfume.memoryFragments).map(fragmentText);
   const notesEn = perfume.scentNotes.all?.en ?? [];
   const notesLocal = perfume.scentNotes.all ? pick(lang, perfume.scentNotes.all) : [];
+  const stages = g.drydown.map((d) => ({ when: Lp(d.when), text: Lp(d.text) }));
+  const scenes = pick(lang, g.scenes);
 
   const leaveTrace = (e: React.MouseEvent<HTMLButtonElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     setTraces((tr) => [...tr, { x: e.clientX - r.left, y: e.clientY - r.top, r: Math.random() * 50 - 25 }]);
+    clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setOpen(true), prefersReducedMotion() ? 0 : 900);
   };
 
@@ -220,53 +333,72 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
     sent: { ru: "Мы рядом.", en: "We're close." },
   };
 
+  const facts: [string, string][] = [
+    [t("Стойкость", "Longevity"), Lp(g.longevity)],
+    [t("Шлейф", "Sillage"), Lp(g.sillage)],
+    [t("Сезон", "Season"), Lp(g.season)],
+    [t("Когда носить", "When to wear"), Lp(g.time)],
+  ];
+  const kicker = (txt: string): CSSProperties => ({ ...light, fontSize: 12, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase" });
+
   return (
-    <div style={{ ...thin, background: `radial-gradient(ellipse at 50% 20%, #f6ebe1, ${C.skin} 60%, #e8d8ca)`, color: C.ink, minHeight: "100vh", overflowX: "hidden", position: "relative" }}>
+    <div style={{ ...thin, background: `radial-gradient(ellipse at 50% 20%, #f6ebe1, ${C.skin} 60%, #e8d8ca)`, color: C.ink, minHeight: "100vh", overflowX: "clip", position: "relative" }}>
       <style>{`
         .an-grain::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2; opacity: .22; mix-blend-mode: multiply;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .42 0 0 0 0 .36 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
         .an-breathe { animation: an-breathe 7s ease-in-out infinite; } @keyframes an-breathe { 50% { opacity: .55; } }
         @media (prefers-reduced-motion: reduce) { .an-breathe { animation: none; } }
+        @media (max-width: 820px) {
+          .an-day, .an-two { grid-template-columns: 1fr !important; }
+          .an-day-photo { max-height: 32svh !important; width: auto !important; height: 32svh; }
+          .an-meter { left: auto !important; right: 10px; top: auto !important; bottom: 14px; transform: none !important; }
+          .an-meter > div:first-child { display: none; }
+          .an-scenes { grid-template-columns: repeat(2, 1fr) !important; }
+        }
       `}</style>
       <div className="an-grain" />
       <Warmth />
+      <DistanceMeter cm={cm} t={t} />
 
-      <nav style={{ position: "relative", zIndex: 10, display: "flex", justifyContent: "space-between", padding: "22px clamp(16px,4vw,48px)", ...light, fontSize: 12, letterSpacing: ".25em", color: C.dim }}>
-        <button onClick={() => navigate("/map")} style={{ color: C.dim }}>← {t("карта", "map")}</button>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 30, display: "flex", justifyContent: "space-between", padding: "20px clamp(16px,4vw,48px)", ...light, fontSize: 12, letterSpacing: ".25em", color: C.dim, pointerEvents: "none" }}>
+        <button onClick={() => navigate("/map")} style={{ color: C.dim, pointerEvents: "auto" }}>← {t("карта", "map")}</button>
         <span>silentium</span>
-        <span>{(["ru", "en"] as const).map((l) => <button key={l} onClick={() => setLang(l)} style={{ marginLeft: 12, color: lang === l ? C.ink : C.faint }}>{l}</button>)}</span>
+        <span style={{ pointerEvents: "auto" }}>{(["ru", "en"] as const).map((l) => <button key={l} onClick={() => setLang(l)} style={{ marginLeft: 12, color: lang === l ? C.ink : C.faint }}>{l}</button>)}</span>
       </nav>
 
-      {/* hero: almost nothing */}
-      <header style={{ position: "relative", zIndex: 3, minHeight: "92vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 16px" }}>
-        <div aria-hidden style={{ position: "absolute", inset: 0, opacity: 0.35, mixBlendMode: "multiply", maskImage: "radial-gradient(ellipse at center, #000 20%, transparent 70%)", WebkitMaskImage: "radial-gradient(ellipse at center, #000 20%, transparent 70%)" }}>
-          <Photo src={perfume.heroImage} alt="" style={{ height: "100%" }} />
-        </div>
-        <div style={{ position: "relative", width: "min(320px, 70vw)", height: "min(46vh, 420px)" }}>
-          <Bottle3D style={{ position: "absolute", inset: 0 }} lighting="fog" liquid="#f1e2d6" liquidOpacity={0.45} glass="#fffaf6" cap="#e8d5c6" capRoughness={0.92} collar="#d8c3b0" spin={0.07}
-            drawLabel={(ctx, w, h) => {
-              ctx.fillStyle = "#f3e7dc"; ctx.fillRect(0, 0, w, h);
-              ctx.fillStyle = "#5a4a42"; ctx.textAlign = "center";
-              ctx.font = "200 104px 'Jost', sans-serif"; ctx.fillText("almost", w / 2, h * 0.47);
-              ctx.fillText("nothing", w / 2, h * 0.7);
-              ctx.font = "300 24px 'Jost', sans-serif"; ctx.fillStyle = "#9b867a"; ctx.fillText("s i l e n t i u m", w / 2, h * 0.88);
-            }} />
-        </div>
-        <h1 style={{ ...thin, fontSize: "clamp(3rem, 9vw, 7.5rem)", letterSpacing: "-.03em", lineHeight: 0.95, marginTop: 10 }}>almost nothing</h1>
-        <p style={{ ...light, fontSize: "clamp(1rem, 1.6vw, 1.25rem)", color: C.dim, marginTop: 18 }}>{pick(lang, perfume.tagline).toLowerCase()}</p>
-        <p className="an-breathe" style={{ ...light, fontSize: 12, letterSpacing: ".3em", color: C.faint, textTransform: "uppercase", marginTop: 54 }}>{t("подойдите ближе", "come closer")}</p>
-      </header>
+      <Approach t={t} description={pick(lang, perfume.description)} />
 
-      <main style={{ position: "relative", zIndex: 3, maxWidth: 1100, margin: "0 auto", padding: "0 clamp(16px,5vw,64px)" }}>
-        {/* the line */}
-        <section style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-          <Whisper><p style={{ ...thin, fontSize: "clamp(1.7rem, 4vw, 3.2rem)", lineHeight: 1.3, maxWidth: 820 }}>{pick(lang, perfume.description)}</p></Whisper>
-        </section>
+      {/* 50 cm: what it smells like, on white cotton */}
+      <section data-cm="50" style={{ position: "relative", zIndex: 3, padding: "120px clamp(16px,5vw,64px) 130px", backgroundImage: `linear-gradient(rgba(247,242,236,.86), rgba(247,242,236,.86)), url(${IMG}/cotton.webp)`, backgroundSize: "auto, 420px" }}>
+        <div className="an-two" style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr .8fr", gap: "40px 70px", alignItems: "center" }}>
+          <Whisper>
+            <p style={kicker("")}>50 {t("см", "cm")} · {t("как он пахнет", "what it smells like")}</p>
+            <p style={{ ...thin, fontSize: "clamp(1.6rem, 2.8vw, 2.4rem)", lineHeight: 1.35, marginTop: 16 }}>{Lp(g.plain)}</p>
+            <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px 30px", marginTop: 38 }}>
+              {facts.map(([k, v]) => (
+                <div key={k} style={{ borderTop: `1px solid ${C.faint}`, paddingTop: 10 }}>
+                  <dt style={{ ...light, fontSize: 10, letterSpacing: ".3em", textTransform: "uppercase", color: C.dim }}>{k}</dt>
+                  <dd style={{ ...light, fontSize: 16, lineHeight: 1.45, marginTop: 5 }}>{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {g.tip && <p style={{ ...light, marginTop: 24, fontSize: 15, color: C.dim }}>— {Lp(g.tip)}</p>}
+          </Whisper>
+          <Whisper style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", width: "min(300px, 66vw)", height: "min(420px, 90vw)" }}>
+              <Bottle3D style={{ position: "absolute", inset: 0 }} lighting="fog" {...bottleLook} spin={0.07} drawLabel={bottleLabel} />
+            </div>
+          </Whisper>
+        </div>
+      </section>
 
+      <DayOnSkin stages={stages} lang={lang} t={t} />
+
+      <main style={{ position: "relative", zIndex: 3, maxWidth: 1100, margin: "0 auto", padding: "120px clamp(16px,5vw,64px) 0" }}>
         {/* notes on skin */}
-        <section style={{ marginBottom: 160 }}>
+        <section data-cm="5" style={{ marginBottom: 160 }}>
           <Whisper style={{ textAlign: "center", marginBottom: 50 }}>
-            <p style={{ ...light, fontSize: 12, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase" }}>{t("четыре ноты", "four notes")}</p>
+            <p style={kicker("")}>5 {t("см", "cm")} · {t("четыре ноты", "four notes")}</p>
             <h2 style={{ ...thin, fontSize: "clamp(2rem, 4.6vw, 3.6rem)", marginTop: 10 }}>{t("Прикоснитесь и подержите", "Touch and hold")}</h2>
           </Whisper>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 30 }}>
@@ -274,29 +406,26 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
           </div>
         </section>
 
-        {/* photo pair (generated images; hidden until they exist) */}
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginBottom: 160 }}>
-          {([["sheets", t("Смятые белые простыни в утреннем свете", "Crumpled white sheets in morning light"), 0], ["iron", t("Пар от утюга над белым хлопком", "Steam from an iron over white cotton"), 1]] as const).map(([name, alt, k]) => (
-            <Whisper key={name} style={{ marginTop: k ? "14vh" : 0 }}>
-              <Photo src={`${IMG}/${name}.webp`} alt={alt} style={{ aspectRatio: "4 / 5", borderRadius: 4, boxShadow: "0 40px 80px rgba(90,74,66,.12)" }} />
-              <p style={{ ...light, fontSize: 13, color: C.dim, marginTop: 14 }}>{fragments[k === 0 ? 0 : 2]?.toLowerCase()}</p>
-            </Whisper>
-          ))}
-        </section>
-
-        {/* sillage */}
-        <section style={{ marginBottom: 160 }}>
-          <Whisper style={{ textAlign: "center", marginBottom: 40 }}>
-            <p style={{ ...light, fontSize: 12, letterSpacing: ".3em", color: C.dim, textTransform: "uppercase" }}>{t("шлейф", "sillage")}</p>
-            <h2 style={{ ...thin, fontSize: "clamp(2rem, 4.6vw, 3.6rem)", marginTop: 10 }}>{t("Насколько близко подойти", "How close to come")}</h2>
+        {/* 0 cm: scenes */}
+        <section data-cm="0" style={{ marginBottom: 120 }}>
+          <Whisper style={{ textAlign: "center", marginBottom: 46 }}>
+            <p style={kicker("")}>0 {t("см", "cm")}</p>
+            <h2 style={{ ...thin, fontSize: "clamp(2rem, 4.6vw, 3.6rem)", marginTop: 10 }}>{t("На что это похоже", "What it feels like")}</h2>
           </Whisper>
-          <SillageMap axes={perfume.radarAxes} lang={lang} />
+          <div className="an-scenes" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(10px, 2vw, 22px)", alignItems: "start" }}>
+            {scenes.map((sc, i) => (
+              <Whisper key={i} style={{ marginTop: i % 2 ? "8vh" : 0 }}>
+                <Photo src={`${IMG}/scene-${i + 1}.webp`} alt={sc} style={{ aspectRatio: "3 / 4", borderRadius: 3, boxShadow: "0 30px 60px rgba(90,74,66,.12)" }} />
+                <p style={{ ...light, fontSize: 14, lineHeight: 1.5, color: C.dim, marginTop: 12 }}>{sc.toLowerCase()}</p>
+              </Whisper>
+            ))}
+          </div>
         </section>
 
         {/* whispers */}
-        <section style={{ marginBottom: 140, textAlign: "center" }}>
+        <section style={{ marginBottom: 120, textAlign: "center" }}>
           {fragments.map((f, i) => (
-            <Whisper key={i} style={{ padding: "8vh 0" }}>
+            <Whisper key={i} style={{ padding: "7vh 0" }}>
               <p style={{ ...thin, fontSize: "clamp(1.4rem, 3vw, 2.4rem)", lineHeight: 1.2, color: C.ink }}>{f.toLowerCase()}</p>
             </Whisper>
           ))}
@@ -304,12 +433,10 @@ export default function AlmostNothingWorld({ perfume }: WorldProps) {
       </main>
 
       {/* leave a trace */}
-      <section style={{ position: "relative", zIndex: 3, padding: "6vh clamp(16px,5vw,64px) 14vh", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 18 }}>
-        <div style={{ width: "min(420px, 80vw)", marginBottom: 20 }}>
-          <Photo src={`${IMG}/wrist.webp`} alt={t("Запястье крупным планом", "A wrist, close up")} style={{ aspectRatio: "1", objectPosition: "50% 70%", maskImage: "radial-gradient(circle, #000 48%, transparent 70%)", WebkitMaskImage: "radial-gradient(circle, #000 48%, transparent 70%)" }} />
-        </div>
+      <section style={{ position: "relative", zIndex: 3, padding: "4vh clamp(16px,5vw,64px) 16vh", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 18 }}>
         <p style={{ ...thin, fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>{t("Оставьте след", "Leave a trace")}</p>
-        <button onClick={leaveTrace} aria-label={t("Оставить след и написать нам", "Leave a trace and write to us")} style={{ position: "relative", width: "min(360px, 80vw)", height: 180, borderRadius: 999, background: `radial-gradient(ellipse at 50% 40%, #f8efe7, ${C.skin})`, boxShadow: "inset 0 2px 20px rgba(90,74,66,.08), 0 20px 60px rgba(90,74,66,.10)", overflow: "hidden" }}>
+        <p style={{ ...light, fontSize: 15, color: C.dim, maxWidth: 420, lineHeight: 1.6 }}>{t("Коснитесь кожи — отпечаток останется, и откроется заявка.", "Touch the skin — the print will stay and the request will open.")}</p>
+        <button onClick={leaveTrace} aria-label={t("Оставить след и написать нам", "Leave a trace and write to us")} style={{ position: "relative", width: "min(420px, 86vw)", height: 220, borderRadius: 999, background: `radial-gradient(ellipse at 50% 40%, #f8efe7, ${C.skin})`, boxShadow: "inset 0 2px 20px rgba(90,74,66,.08), 0 20px 60px rgba(90,74,66,.10)", overflow: "hidden", marginTop: 10 }}>
           <span style={{ ...light, fontSize: 12, letterSpacing: ".3em", textTransform: "uppercase", color: C.dim }}>{t("коснитесь", "touch")}</span>
           {traces.map((tr, i) => (
             <span key={i} style={{ position: "absolute", left: tr.x - 34, top: tr.y - 40, transform: `rotate(${tr.r}deg)`, opacity: 0.8, pointerEvents: "none" }}><Fingerprint progress={1} size={68} /></span>
