@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useLang } from "@/contexts/LangContext";
+import CatalogMenu from "@/components/CatalogMenu";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -12,7 +13,6 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [titleVisible, setTitleVisible] = useState(false);
-  const [subVisible, setSubVisible] = useState(false);
   const [btnVisible, setBtnVisible] = useState(false);
 
   // Particle animation on canvas
@@ -78,9 +78,8 @@ export default function Home() {
   useEffect(() => {
     const t1 = setTimeout(() => setLoaded(true), 100);
     const t2 = setTimeout(() => setTitleVisible(true), 400);
-    const t3 = setTimeout(() => setSubVisible(true), 900);
-    const t4 = setTimeout(() => setBtnVisible(true), 1400);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    const t3 = setTimeout(() => setBtnVisible(true), 1100);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   return (
@@ -126,18 +125,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Top-left brand mark */}
-      <div
-        className="absolute top-8 left-8 z-30"
-        style={{
-          opacity: loaded ? 1 : 0,
-          transition: "opacity 1s ease",
-        }}
-      >
-        <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.3)", fontSize: "0.6rem", letterSpacing: "0.3em" }}>
-          SILENTIUM
-        </span>
-      </div>
+      <CatalogMenu />
 
       {/* Center content */}
       <div className="absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center">
@@ -171,39 +159,6 @@ export default function Home() {
             transition: "width 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s",
           }}
         />
-
-        {/* Subtitle */}
-        <div
-          style={{
-            opacity: subVisible ? 1 : 0,
-            transform: subVisible ? "translateY(0)" : "translateY(12px)",
-            transition: "opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-        >
-          <p
-            className="font-mono-label"
-            style={{
-              color: "rgba(232,228,220,0.45)",
-              letterSpacing: "0.25em",
-              fontSize: "0.65rem",
-              marginBottom: "0.5rem",
-            }}
-          >
-            {t("ПАРФЮМЕРИЯ", "PERFUMERY")}
-          </p>
-          <p
-            className="font-display"
-            style={{
-              color: "rgba(232,228,220,0.55)",
-              fontSize: "clamp(0.9rem, 2vw, 1.2rem)",
-              fontWeight: 300,
-              fontStyle: "italic",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {t("Рождённая из тишины", "Born from silence")}
-          </p>
-        </div>
 
         {/* CTA Button */}
         <div

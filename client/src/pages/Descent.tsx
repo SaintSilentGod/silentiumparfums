@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { useLang } from "@/contexts/LangContext";
 import { getPerfumeById } from "@/lib/perfumes";
 import { BOTTLE_COLORS } from "@/lib/bottleLooks";
+import CatalogMenu from "@/components/CatalogMenu";
 
 const mono: CSSProperties = { fontFamily: "'JetBrains Mono', 'DM Mono', monospace" };
 const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', serif" };
@@ -470,7 +471,7 @@ export default function Descent() {
 
         {/* header */}
         <header style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px clamp(16px,3vw,32px)", ...mono, fontSize: 12, letterSpacing: ".2em" }}>
-          <button className="ds-btn" onClick={() => navigate("/")}>← SILENTIUM</button>
+          <span><CatalogMenu style={{ top: 11, left: "clamp(7px, calc(3vw - 9px), 23px)" }} /><button className="ds-btn" onClick={() => navigate("/")} style={{ marginLeft: 46 }}>← SILENTIUM</button></span>
           <span ref={depthRef} style={{ color: DIM }} aria-hidden>−0.0 м</span>
           <span>{(["ru", "en"] as const).map((l) => <button key={l} className="ds-btn" onClick={() => setLang(l)} style={{ marginLeft: 12, color: lang === l ? INK : undefined }}>{l.toUpperCase()}</button>)}</span>
         </header>
