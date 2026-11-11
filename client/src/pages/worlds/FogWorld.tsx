@@ -11,7 +11,7 @@ import { useLang } from "@/contexts/LangContext";
 import Bottle3D from "@/components/Bottle3D";
 import RequestDialog, { type DialogSkin } from "@/components/RequestDialog";
 import { useReveal } from "@/lib/useReveal";
-import { fragmentText, pick, prefersReducedMotion, type WorldProps } from "./shared";
+import { fragmentText, loopWhileVisible, pick, prefersReducedMotion, type WorldProps } from "./shared";
 
 const C = { milk: "#eef1f1", fog: "#dfe4e5", grey: "#9aa3a5", ink: "#1d2224", tar: "#0b0c0d", dim: "rgba(29,34,36,.55)", faint: "rgba(29,34,36,.16)", light: "#f4f6f6", lightDim: "rgba(244,246,246,.6)" };
 const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', serif", fontWeight: 300 };
@@ -162,14 +162,10 @@ function Contrast({ t, top, base }: { t: (ru: string, en: string) => string; top
   const dragging = useRef(false);
   const { ref: seen, visible } = useReveal();
   useEffect(() => {
-    if (prefersReducedMotion()) return;
-    let raf = 0; const t0 = performance.now();
-    const loop = (now: number) => {
-      if (!touched.current) setX(50 + Math.sin((now - t0) / 1600) * 14); // breathes until you take it
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    if (prefersReducedMotion() || !box.current) return;
+    const t0 = performance.now();
+    // breathes until you take it
+    return loopWhileVisible(box.current, (now) => { if (!touched.current) setX(50 + Math.sin((now - t0) / 1600) * 14); }, "0px");
   }, []);
   const moveTo = (clientX: number) => {
     const r = box.current!.getBoundingClientRect();
@@ -325,31 +321,27 @@ function Lantern({ scenes, t }: { scenes: string[]; t: (ru: string, en: string) 
     const el = area.current; if (!el) return;
     const still = prefersReducedMotion();
     if (still) { setFound(scenes.map(() => true)); el.style.setProperty("--r", "0px"); return; }
-    let x = 0.5, y = 0.5, raf = 0;
-    const put = (px: number, py: number) => {
-      el.style.setProperty("--x", `${px}px`); el.style.setProperty("--y", `${py}px`);
-      const r = el.getBoundingClientRect();
-      cards.current.forEach((c, i) => {
-        if (!c) return;
+    const lit = scenes.map(() => false);
+    // r = the area's rect, read before any style write so the frame never forces an extra layout
+    const put = (px: number, py: number, r: DOMRect) => {
+      if (!lit.every(Boolean)) cards.current.forEach((c, i) => {
+        if (!c || lit[i]) return;
         const b = c.getBoundingClientRect();
-        if (px + r.left > b.left && px + r.left < b.right && py + r.top > b.top && py + r.top < b.bottom) setFound((f) => (f[i] ? f : f.map((v, j) => (j === i ? true : v))));
+        if (px + r.left > b.left && px + r.left < b.right && py + r.top > b.top && py + r.top < b.bottom) { lit[i] = true; setFound((f) => (f[i] ? f : f.map((v, j) => (j === i ? true : v)))); }
       });
+      el.style.setProperty("--x", `${px}px`); el.style.setProperty("--y", `${py}px`);
     };
-    const move = (e: PointerEvent) => { user.current = true; const r = el.getBoundingClientRect(); put(e.clientX - r.left, e.clientY - r.top); };
+    const move = (e: PointerEvent) => { user.current = true; const r = el.getBoundingClientRect(); put(e.clientX - r.left, e.clientY - r.top, r); };
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerdown", move);
     // until someone takes the lantern, it wanders on its own
     const t0 = performance.now();
-    const loop = (now: number) => {
-      if (!user.current) {
-        const r = el.getBoundingClientRect(), s = (now - t0) / 1000;
-        x = 0.5 + Math.sin(s * 0.45) * 0.36; y = 0.5 + Math.sin(s * 0.7 + 1) * 0.3;
-        put(x * r.width, y * r.height);
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); el.removeEventListener("pointermove", move); el.removeEventListener("pointerdown", move); };
+    const stop = loopWhileVisible(el, (now) => {
+      if (user.current) return;
+      const r = el.getBoundingClientRect(), s = (now - t0) / 1000;
+      put((0.5 + Math.sin(s * 0.45) * 0.36) * r.width, (0.5 + Math.sin(s * 0.7 + 1) * 0.3) * r.height, r);
+    }, "0px");
+    return () => { stop(); el.removeEventListener("pointermove", move); el.removeEventListener("pointerdown", move); };
   }, [scenes]);
   return (
     <div ref={area} className="fg-lantern" style={{ position: "relative", maxWidth: 1180, margin: "0 auto", borderRadius: 6, overflow: "hidden", touchAction: "pan-y", ["--x" as string]: "50%", ["--y" as string]: "50%" }}>

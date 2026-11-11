@@ -369,9 +369,9 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
   return (
     <div style={{ ...mono, background: C.bg, color: C.white, minHeight: "100vh", overflowX: "clip", cursor: "crosshair" }}>
       <style>{`
-        .se-holo { background: conic-gradient(from var(--se-a, 0deg) at 50% 50%, #ff2bd6, #22f0ff, #c8ff2e, #ffd23a, #b48cff, #ff2bd6); animation: se-rot 8s linear infinite; }
-        @property --se-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-        @keyframes se-rot { to { --se-a: 360deg; } }
+        /* the blurred blob is painted once and turned as a whole — animating the gradient angle repainted and re-blurred it every frame */
+        .se-holo { background: conic-gradient(from 0deg at 50% 50%, #ff2bd6, #22f0ff, #c8ff2e, #ffd23a, #b48cff, #ff2bd6); animation: se-rot 8s linear infinite; }
+        @keyframes se-rot { to { rotate: 360deg; } }
         .se-chrome { background: ${CHROME}; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 18px rgba(255,43,214,.45)); }
         .se-glitch { position: relative; }
         .se-glitch::before, .se-glitch::after { content: attr(data-t); position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none; }
@@ -420,7 +420,7 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
 
       {/* hero */}
       <header style={{ position: "relative", minHeight: "92vh", overflow: "hidden", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", alignItems: "center", padding: "30px clamp(16px,5vw,70px)" }}>
-        <div className="se-holo" style={{ position: "absolute", inset: "-30%", opacity: 0.2, filter: "blur(80px)" }} />
+        <div className="se-holo" style={{ position: "absolute", inset: "-30%", opacity: 0.2, filter: "blur(80px)", animation: "none" }} />
         <img src={perfume.heroImage} alt={t("Неоновый переулок в Токио после дождя", "A neon alley in Tokyo after the rain")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.75 }} />
         <div aria-hidden style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${C.bg}f0 0%, ${C.bg}aa 40%, ${C.bg}33 75%), linear-gradient(transparent 70%, ${C.bg})` }} />
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)", backgroundSize: "40px 40px", maskImage: "linear-gradient(transparent, #000 60%)", WebkitMaskImage: "linear-gradient(transparent, #000 60%)" }} />

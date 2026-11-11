@@ -3,7 +3,7 @@
 // the ladder slides to the left and a corridor opens on the right with a door at its far end.
 // The door leads to the perfume page. Everything per-frame is written straight to the DOM from one rAF loop.
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useLocation } from "wouter";
 import { useLang } from "@/contexts/LangContext";
 import { getPerfumeById } from "@/lib/perfumes";
@@ -22,35 +22,39 @@ const STOPS = [
 
 const RUNG = 54;           // ladder rung spacing, px — one tile of ladder.webp
 const LADDER_W = 86, RUNG_MID = 27; // tile width; rung centre within the tile (rails sit at ±37 px)
-const CLIMB_SECONDS = 4;   // the climber never takes less than this between two landings — he lags behind a fast scroll
+const FOLLOW = 14;         // how fast the climber catches up with the scroll, 1/s — light smoothing, never a lag
 const METERS_PER_PX = 0.04; // depth readout
 const SCROLL_KEY = "silentium:descent-scroll";
 
 type Layout = {
   vw: number; vh: number;
-  desc: number;   // scroll px spent climbing between landings
+  first: number;  // scroll position of the first landing
+  seg: number;    // scroll px from one landing to the next
+  plat: number;   // half-width of the scroll zone where the climber stands still at a landing
+  end: number;    // max scroll — a little below the last landing
   gap: number;    // ladder px between landings
-  hold: number;   // scroll px spent standing at a landing
-  seg: number;
-  total: number;  // scrollable height
+  total: number;  // document height
   feetY: number;  // screen y of the climber's feet
   ladderTo: number; // screen x of the ladder while at a landing
   corrW: number; corrH: number;
   ledge: number;  // gap between the ladder axis and the corridor opening
+  zoomBase: number; zoomLanding: number; // camera creeps into the corridor while you stand at the landing
+  mobile: boolean;
 };
 
 function makeLayout(): Layout {
   const vw = window.innerWidth, vh = window.innerHeight;
   const mobile = vw < 720;
-  const desc = Math.round(vh * 0.5), hold = Math.round(vh * 0.75);
+  const seg = Math.round(vh * 0.95), plat = Math.round(vh * 0.2), first = Math.round(vh * 0.75);
+  const end = first + (STOPS.length - 1) * seg + seg;
   const feetY = Math.round(vh * 0.68);
   const ledge = mobile ? 70 : 100;
   // mobile: ladder hugs the left edge (room for the climber's arms), corridor fills the rest
   let corrW = mobile ? vw - 46 - ledge - 14 : Math.min(vw * 0.62, 1400);
   if (corrW * 0.5625 > feetY - 170) corrW = (feetY - 170) / 0.5625; // leave room for the name above it
   return {
-    vw, vh, desc, hold, seg: desc + hold, feetY, gap: Math.round(vh * 0.78),
-    total: STOPS.length * (desc + hold) + desc + vh,
+    vw, vh, first, seg, plat, end, feetY, gap: Math.round(vh * 0.78),
+    total: end + vh, mobile, zoomBase: mobile ? 1 : 1.3, zoomLanding: mobile ? 0.35 : 0.5,
     // ladder + corridor sit as one centred group, the ladder never further right than a quarter of the screen
     ladderTo: mobile ? 46 : Math.min(vw * 0.25, Math.max(vw * 0.12, (vw - corrW - ledge) / 2 - 40)),
     // corridor art is 16:9; on phones the opening is square and the art is cropped around the door
@@ -62,15 +66,27 @@ const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => { const t = clamp01(x); return t * t * (3 - 2 * t); };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-/** scroll → where the climber is, how much the camera is focused on a landing and which one */
+const landingAt = (i: number, L: Layout) => L.first + i * L.seg;
+
+/** scroll → where the climber is, how much the camera is focused on a landing and which one.
+ *  Landing i sits at scroll `first + i·seg`; within ±plat of it the climber stands still, between landings
+ *  he eases out and in (so he arrives softly and the page's scroll-snap can settle right on the landing).
+ *  The ladder slides aside a little before he stops and slides back as he leaves — the motions overlap. */
 function timeline(s: number, L: Layout) {
   const n = STOPS.length;
-  const k = L.gap / L.desc;
-  if (s >= n * L.seg) return { depth: n * L.gap + (s - n * L.seg) * k, focus: 0, stop: -1 };
-  const i = Math.floor(Math.max(0, s) / L.seg), w = s - i * L.seg;
-  if (w < L.desc) return { depth: i * L.gap + w * k, focus: 0, stop: -1 };
-  const h = (w - L.desc) / L.hold;
-  return { depth: (i + 1) * L.gap, focus: smooth(h / 0.3) * (1 - smooth((h - 0.75) / 0.25)), stop: i };
+  const i = Math.max(0, Math.min(n - 1, Math.round((s - L.first) / L.seg))); // nearest landing
+  const d = s - landingAt(i, L), at = (i + 1) * L.gap;
+  const focus = 1 - smooth((Math.abs(d) - L.plat * 0.5) / (L.plat * 1.1));
+  let depth = at;
+  if (d < -L.plat) {
+    // still above landing i: climbing from the previous one (or from the top)
+    const from = i === 0 ? 0 : landingAt(i - 1, L) + L.plat, to = landingAt(i, L) - L.plat;
+    depth = i * L.gap + L.gap * smooth((s - from) / (to - from));
+  } else if (d > L.plat) {
+    const to = i === n - 1 ? L.end : landingAt(i + 1, L) - L.plat, from = landingAt(i, L) + L.plat;
+    depth = at + L.gap * smooth((s - from) / (to - from));
+  }
+  return { depth, focus, stop: focus > 0 ? i : -1 };
 }
 
 // ——— stick figure ———
@@ -143,7 +159,6 @@ const DOORWAYS: Record<string, [x: number, y: number, w: number, h: number]> = {
   "silent-fog": [984, 438, 35, 93],
   "seance": [1002, 478, 36, 98],
 };
-const ZOOM_BASE = 1.3, ZOOM_LANDING = 0.5; // camera creeps into the corridor while you stand at the landing
 
 function Corridor({ id, glow, entering, label, focusable, onEnter, boxW, boxH }: { id: string; glow: string; entering: boolean; label: string; focusable: boolean; onEnter: () => void; boxW: number; boxH: number }) {
   const [x, y, w, h] = DOORWAYS[id];
@@ -217,13 +232,14 @@ export default function Descent() {
 
   const ladderRef = useRef<HTMLDivElement>(null);
   const climberRef = useRef<HTMLDivElement>(null);
+  const shadeRef = useRef<HTMLDivElement>(null);
+  const noteRef = useRef<HTMLDivElement>(null);
+  const decorRefs = useRef<(HTMLDivElement | null)[]>([]);
   const bodyRef = useRef<SVGPathElement>(null);
   const headRef = useRef<SVGCircleElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const posRef = useRef(-1); // where the climber actually is, in scroll px — chases window.scrollY at a limited speed
-  const lampRef = useRef<HTMLDivElement>(null);
   const wallRef = useRef<HTMLDivElement>(null);
-  const wallLitRef = useRef<HTMLDivElement>(null);
   const depthRef = useRef<HTMLSpanElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const stopRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -244,56 +260,76 @@ export default function Descent() {
     posRef.current = window.scrollY;
   }, []);
 
+  // scroll-snap on the page itself: a flick settles on the nearest landing instead of stopping between two
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.scrollSnapType = "y proximity";
+    return () => { root.style.scrollSnapType = ""; };
+  }, []);
+
   useEffect(() => {
     let raf = 0, prev = performance.now();
     if (posRef.current < 0) posRef.current = window.scrollY;
+    // per-frame values are written only when they change — most of the page is still while you scroll
+    const cache = new Map<string, string>();
+    const put = (el: HTMLElement | SVGElement | null | undefined, slot: string, key: string, v: string) => {
+      if (!el || cache.get(slot) === v) return;
+      cache.set(slot, v);
+      el.style.setProperty(key, v);
+    };
+    const mod = (x: number, m: number) => ((x % m) + m) % m;
+    const stops = stopRefs.current.map((el) => el && {
+      el, cam: el.querySelector<HTMLElement>(".ds-cam"), reveal: Array.from(el.querySelectorAll<HTMLElement>(".ds-reveal")),
+    });
+    const decorY = DECOR.map((d) => (d.gap + 1 + d.at) * L.gap - 60);
+
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - prev) / 1000);
       prev = now;
-      // ease toward the scroll position, but never faster than one landing per CLIMB_SECONDS
-      // (unless the jump is long — e.g. the landing index — then hurry proportionally)
       const target = window.scrollY, diff = target - posRef.current;
-      const cap = Math.max(L.seg / CLIMB_SECONDS, Math.abs(diff) > L.seg * 1.5 ? Math.abs(diff) * 1.4 : 0) * dt;
-      const step = diff * (1 - Math.exp(-dt * 3));
-      posRef.current += Math.abs(diff) < 0.5 ? diff : Math.sign(step) * Math.min(Math.abs(step), cap);
+      posRef.current += Math.abs(diff) < 0.5 ? diff : diff * (1 - Math.exp(-dt * FOLLOW));
       const s = posRef.current;
       const { depth, focus, stop } = timeline(s, L);
       const ladderX = lerp(L.vw / 2, L.ladderTo, focus);
+      const lx = ladderX.toFixed(1);
 
-      if (ladderRef.current) {
-        ladderRef.current.style.transform = `translate3d(${ladderX}px,0,0)`;
-        // rungs line up with where the hands and feet grip
-        ladderRef.current.style.backgroundPosition = `0 ${((L.feetY + FOOT_LOW + 6 - RUNG_MID - depth) % RUNG + RUNG) % RUNG}px`;
-      }
-      if (climberRef.current) climberRef.current.style.transform = `translate3d(${ladderX}px,${L.feetY}px,0)`;
+      // ladder: a strip one rung taller than the screen, shifted by the rung phase — no repaint, just a move
+      put(ladderRef.current, "ladder", "transform", `translate3d(${lx}px,${(mod(L.feetY + FOOT_LOW + 6 - RUNG_MID - depth, RUNG) - RUNG).toFixed(1)}px,0)`);
+      put(climberRef.current, "climber", "transform", `translate3d(${lx}px,${L.feetY}px,0)`);
       const pose = stickPose(depth, focus, now / 1000);
       bodyRef.current?.setAttribute("d", pose.d);
       headRef.current?.setAttribute("cx", pose.head[0].toFixed(1));
       headRef.current?.setAttribute("cy", pose.head[1].toFixed(1));
-      if (worldRef.current) worldRef.current.style.transform = `translate3d(${ladderX}px,${L.feetY - depth}px,0)`;
-      if (lampRef.current) lampRef.current.style.transform = `translate3d(${ladderX}px,${L.feetY - 70}px,0)`;
-      const wallPos = `${(ladderX - L.vw / 2) * 0.6}px ${-depth * 0.85}px`;
-      if (wallRef.current) wallRef.current.style.backgroundPosition = wallPos;
-      if (wallLitRef.current) {
-        const m = `radial-gradient(circle at ${ladderX}px ${L.feetY - 70}px, #000 0, rgba(0,0,0,.35) 200px, transparent 420px)`;
-        wallLitRef.current.style.backgroundPosition = wallPos;
-        wallLitRef.current.style.maskImage = m;
-        wallLitRef.current.style.webkitMaskImage = m;
+      put(worldRef.current, "world", "transform", `translate3d(${lx}px,${(L.feetY - depth).toFixed(1)}px,0)`);
+      // stone wall: an oversized tile layer moved within one tile; the lamp light is a gradient that only slides sideways
+      put(wallRef.current, "wall", "transform", `translate3d(${mod((ladderX - L.vw / 2) * 0.6, 360).toFixed(1)}px,${mod(-depth * 0.85, 360).toFixed(1)}px,0)`);
+      put(shadeRef.current, "shade", "transform", `translate3d(${(ladderX - L.vw / 2).toFixed(1)}px,0,0)`);
+      if (depthRef.current) {
+        const txt = `−${(depth * METERS_PER_PX).toFixed(1)} ${lang === "ru" ? "м" : "m"}`;
+        if (cache.get("depth") !== txt) { cache.set("depth", txt); depthRef.current.textContent = txt; }
       }
-      if (depthRef.current) depthRef.current.textContent = `−${(depth * METERS_PER_PX).toFixed(1)} ${lang === "ru" ? "м" : "m"}`;
-      if (introRef.current) introRef.current.style.opacity = String(1 - smooth(s / (L.vh * 0.5)));
+      put(introRef.current, "intro", "opacity", (1 - smooth(s / (L.vh * 0.5))).toFixed(3));
+      const k = smooth((s - landingAt(STOPS.length - 1, L) - L.plat - (L.end - landingAt(STOPS.length - 1, L) - L.plat) * 0.4) / ((L.end - landingAt(STOPS.length - 1, L) - L.plat) * 0.5));
+      put(noteRef.current, "note", "opacity", k.toFixed(3));
+      put(noteRef.current, "note-pe", "pointer-events", k > 0.5 ? "auto" : "none");
 
-      STOPS.forEach((_, i) => {
-        const el = stopRefs.current[i];
-        if (!el) return;
+      decorY.forEach((wy, i) => {
+        const y = L.feetY - depth + wy;
+        put(decorRefs.current[i], `decor${i}`, "display", y > -400 && y < L.vh + 400 ? "block" : "none");
+      });
+
+      stops.forEach((st, i) => {
+        if (!st) return;
         const y = L.feetY + (i + 1) * L.gap - depth;
         const vis = y > -L.vh * 0.2 && y < L.vh * 1.9;
-        el.style.display = vis ? "block" : "none";
+        put(st.el, `s${i}`, "display", vis ? "block" : "none");
         if (!vis) return;
         const f = i === stop ? focus : 0;
-        el.style.transform = `translate3d(${ladderX}px,${y}px,0)`;
-        el.style.setProperty("--f", f.toFixed(3));
+        put(st.el, `s${i}t`, "transform", `translate3d(${lx}px,${y.toFixed(1)}px,0)`);
+        put(st.cam, `s${i}c`, "scale", (L.zoomBase + f * L.zoomLanding).toFixed(4));
+        const fo = f.toFixed(3), ft = `translate3d(0,${((1 - f) * 14).toFixed(1)}px,0)`;
+        st.reveal.forEach((r, j) => { put(r, `s${i}r${j}o`, "opacity", fo); put(r, `s${i}r${j}t`, "transform", ft); });
       });
 
       const a = focus > 0.5 ? stop : -1;
@@ -311,7 +347,7 @@ export default function Descent() {
     window.setTimeout(() => navigate(`/perfume/${id}`), 950);
   };
 
-  const jumpTo = (i: number) => window.scrollTo({ top: i * L.seg + L.desc + L.hold * 0.45, behavior: "smooth" });
+  const jumpTo = (i: number) => window.scrollTo({ top: landingAt(i, L), behavior: "smooth" });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Enter" && activeRef.current >= 0) enter(STOPS[activeRef.current]); };
@@ -322,18 +358,20 @@ export default function Descent() {
   const entGlow = entering ? BOTTLE_COLORS[entering]?.glow ?? "#fff" : "#fff";
 
   return (
-    <div style={{ height: L.total, background: "#050408", color: INK }}>
+    <div style={{ position: "relative", height: L.total, background: "#050408", color: INK }}>
+      {STOPS.map((id, i) => <div key={id} className="ds-snap" style={{ top: landingAt(i, L) }} aria-hidden />)}
+      <div className="ds-snap" style={{ top: L.end }} aria-hidden />
       <style>{`
         .ds-btn { color: ${DIM}; transition: color .2s; } .ds-btn:hover { color: ${INK}; }
-        .ds-stop { position: absolute; left: 0; top: 0; will-change: transform; --f: 0; }
-        .ds-reveal { opacity: var(--f); transform: translateY(calc((1 - var(--f)) * 14px)); }
-        .ds-cam { transform: scale(calc(${ZOOM_BASE} + var(--f) * ${ZOOM_LANDING})); }
+        .ds-stop { position: absolute; left: 0; top: 0; will-change: transform; }
+        .ds-reveal { opacity: 0; }
+        .ds-snap { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; pointer-events: none; }
         .ds-cam.is-enter { transform: scale(16); filter: brightness(1.5); transition: transform 1.1s cubic-bezier(.7,0,.25,1), filter 1.1s; }
         .ds-leaf { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 0 50%; transition: transform .9s cubic-bezier(.16,1,.3,1), filter .9s;
           filter: brightness(.82) drop-shadow(0 0 3px rgba(0,0,0,.6)); }
         .ds-cam:has(.ds-hit:hover) .ds-leaf, .ds-cam:has(.ds-hit:focus-visible) .ds-leaf, .ds-cam.is-enter .ds-leaf { transform: rotateY(-72deg); filter: brightness(.55); }
-        .ds-bloom { position: absolute; width: 22%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; opacity: .25; transition: opacity .9s; }
-        .ds-cam:has(.ds-hit:hover) .ds-bloom, .ds-cam.is-enter .ds-bloom { opacity: .9; }
+        .ds-bloom { position: absolute; width: 22%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; opacity: .18; transition: opacity .9s; }
+        .ds-cam:has(.ds-hit:hover) .ds-bloom, .ds-cam.is-enter .ds-bloom { opacity: .7; }
         .ds-hit { position: absolute; border-radius: 6px; cursor: pointer; outline: none; }
         .ds-portal { position: absolute; pointer-events: none; border-style: solid; border-width: 34px 28px 0; border-image: url(${ART}/frame.webp) 102 88 0 89 / 34px 28px 0 round stretch; filter: brightness(.8); }
         .ds-hit:focus-visible { box-shadow: 0 0 0 2px ${INK}; }
@@ -341,31 +379,30 @@ export default function Descent() {
         .ds-dot:hover { border-color: ${INK}; }
         .ds-flame { position: absolute; left: 1px; top: 4px; width: 18px; height: 30px; border-radius: 50% 50% 45% 45% / 62% 62% 38% 38%;
           background: radial-gradient(ellipse at 50% 75%, #fff6d8 0%, #ffc864 30%, #ff7a1e 62%, rgba(255,80,20,0) 72%);
-          transform-origin: 50% 90%; animation: ds-flick 1.3s ease-in-out infinite alternate; filter: blur(.4px); mix-blend-mode: screen; }
+          transform-origin: 50% 90%; animation: ds-flick 1.3s ease-in-out infinite alternate; }
         @keyframes ds-flick { 0% { transform: scale(1, 1) skewX(0); } 30% { transform: scale(.92, 1.08) skewX(-3deg); } 60% { transform: scale(1.05, .94) skewX(2deg); } 100% { transform: scale(.96, 1.04) skewX(-1deg); } }
         .ds-torch-glow { position: absolute; left: -330px; top: -320px; width: 680px; height: 680px; border-radius: 50%; pointer-events: none;
-          background: radial-gradient(circle, rgba(255,160,70,.2), rgba(255,120,40,.07) 30%, transparent 62%); animation: ds-glow 2.3s ease-in-out infinite alternate; }
+          background: radial-gradient(circle, rgba(255,160,70,.2), rgba(255,120,40,.07) 30%, transparent 62%); }
         .ds-candle-glow { position: absolute; left: -80px; top: -60px; width: 228px; height: 228px; border-radius: 50%; pointer-events: none;
-          background: radial-gradient(circle, rgba(255,200,120,.16), transparent 60%); animation: ds-glow 3.1s ease-in-out infinite alternate; }
-        @keyframes ds-glow { 0% { opacity: .75; } 40% { opacity: 1; } 55% { opacity: .82; } 100% { opacity: .95; } }
+          background: radial-gradient(circle, rgba(255,200,120,.16), transparent 60%); }
         .ds-hint { animation: ds-bob 2.4s ease-in-out infinite; } @keyframes ds-bob { 50% { transform: translateY(6px); opacity: .5; } }
-        @media (max-width: 720px) { .ds-rail { display: none !important; } .ds-cap { font-size: 1.5rem !important; } .ds-hit { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; } .ds-cam { transform: scale(calc(1 + var(--f) * .35)); } }
+        @media (max-width: 720px) { .ds-rail { display: none !important; } .ds-cap { font-size: 1.5rem !important; } .ds-hit { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; } }
       `}</style>
 
       <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
-        {/* shaft wall — stone blocks drifting with depth */}
-        <div ref={wallRef} style={{ position: "absolute", inset: 0, opacity: 0.28, backgroundImage: `url(${ART}/wall.webp)`, backgroundSize: "360px 360px" }} />
-        {/* the same wall, fully lit, showing only around the climber's lamp */}
-        <div ref={wallLitRef} style={{ position: "absolute", inset: 0, opacity: 0.75, backgroundImage: `url(${ART}/wall.webp)`, backgroundSize: "360px 360px" }} />
-        {/* the climber's light */}
-        <div ref={lampRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}>
-          <div style={{ position: "absolute", left: -520, top: -520, width: 1040, height: 1040, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,236,200,.13), rgba(255,236,200,.04) 35%, transparent 65%)" }} />
-        </div>
+        {/* shaft wall — stone blocks drifting with depth; one tile of slack on each side, moved by transform only */}
+        <div ref={wallRef} style={{ position: "absolute", left: -360, top: -360, width: L.vw + 720, height: L.vh + 720, opacity: 0.8, willChange: "transform", backgroundImage: `url(${ART}/wall.webp)`, backgroundSize: "360px 360px" }} />
+        {/* the climber's lamp: warm light + darkness around it, painted once and slid sideways with the ladder */}
+        <div ref={shadeRef} style={{
+          position: "absolute", left: 0, top: 0, height: L.vh, width: L.vw / 2 + L.vw - L.ladderTo + 2, willChange: "transform", pointerEvents: "none",
+          background: `radial-gradient(circle at ${L.vw / 2}px ${L.feetY - 70}px, rgba(255,236,200,.13) 0, rgba(255,236,200,.04) 257px, transparent 478px),
+            radial-gradient(circle at ${L.vw / 2}px ${L.feetY - 70}px, rgba(5,4,8,0) 0, rgba(5,4,8,.41) 200px, rgba(5,4,8,.65) 420px)`,
+        }} />
 
         {/* torches, niches and carvings on the shaft wall — one layer that moves with the ladder */}
         <div ref={worldRef} style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0, willChange: "transform" }} aria-hidden>
           {DECOR.map((d, i) => (
-            <div key={i} style={{ position: "absolute", left: -d.x, top: (d.gap + 1 + d.at) * L.gap - 60 }}>
+            <div key={i} ref={(el) => { decorRefs.current[i] = el; }} style={{ position: "absolute", left: -d.x, top: (d.gap + 1 + d.at) * L.gap - 60, display: "none" }}>
               <Decor kind={d.kind} text={d.text} />
             </div>
           ))}
@@ -405,7 +442,7 @@ export default function Descent() {
 
         {/* the endless ladder */}
         <div ref={ladderRef} style={{
-          position: "absolute", top: 0, bottom: 0, left: -LADDER_W / 2, width: LADDER_W,
+          position: "absolute", top: 0, height: L.vh + 2 * RUNG, left: -LADDER_W / 2, width: LADDER_W, willChange: "transform",
           backgroundImage: `url(${ART}/ladder.webp)`, backgroundSize: `${LADDER_W}px ${RUNG}px`, backgroundRepeat: "repeat-y",
           filter: "brightness(.9) drop-shadow(0 0 10px rgba(0,0,0,.8))",
         }} />
@@ -429,9 +466,7 @@ export default function Descent() {
         </div>
 
         {/* bottom of the shaft */}
-        {active === -1 && (
-          <BottomNote L={L} t={t} onTop={() => window.scrollTo({ top: 0, behavior: "smooth" })} onNebula={() => navigate("/nebula")} />
-        )}
+        <BottomNote noteRef={noteRef} t={t} onTop={() => window.scrollTo({ top: 0, behavior: "smooth" })} onNebula={() => navigate("/nebula")} />
 
         {/* header */}
         <header style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px clamp(16px,3vw,32px)", ...mono, fontSize: 12, letterSpacing: ".2em" }}>
@@ -458,20 +493,10 @@ export default function Descent() {
   );
 }
 
-function BottomNote({ L, t, onTop, onNebula }: { L: Layout; t: (ru: string, en: string) => string; onTop: () => void; onNebula: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    let raf = 0;
-    const tick = () => {
-      raf = requestAnimationFrame(tick);
-      const k = smooth((window.scrollY - STOPS.length * L.seg - L.desc * 0.4) / (L.desc * 0.5));
-      if (ref.current) { ref.current.style.opacity = String(k); ref.current.style.pointerEvents = k > 0.5 ? "auto" : "none"; }
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [L]);
+function BottomNote({ noteRef, t, onTop, onNebula }: { noteRef: RefObject<HTMLDivElement | null>; t: (ru: string, en: string) => string; onTop: () => void; onNebula: () => void }) {
+  // opacity and pointer-events are driven by the main frame loop
   return (
-    <div ref={ref} style={{ position: "absolute", left: 0, right: 0, top: "24vh", textAlign: "center", opacity: 0, padding: "0 16px" }}>
+    <div ref={noteRef} style={{ position: "absolute", left: 0, right: 0, top: "24vh", textAlign: "center", opacity: 0, pointerEvents: "none", padding: "0 16px" }}>
       <p style={{ ...serif, fontStyle: "italic", fontWeight: 300, fontSize: "clamp(1.6rem, 3.4vw, 2.6rem)" }}>{t("Дальше — только тишина", "Below this, only silence")}</p>
       <div style={{ ...mono, fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", marginTop: 20, display: "flex", gap: 28, justifyContent: "center" }}>
         <button className="ds-btn" onClick={onTop}>↑ {t("наверх", "back up")}</button>

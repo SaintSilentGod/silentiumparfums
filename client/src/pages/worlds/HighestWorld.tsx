@@ -11,7 +11,7 @@ import { useLang } from "@/contexts/LangContext";
 import Bottle3D from "@/components/Bottle3D";
 import RequestDialog, { type DialogSkin } from "@/components/RequestDialog";
 import { useReveal } from "@/lib/useReveal";
-import { fragmentText, pick, prefersReducedMotion, type WorldProps } from "./shared";
+import { fragmentText, loopWhileVisible, pick, prefersReducedMotion, type WorldProps } from "./shared";
 
 const C = { black: "#0b0807", leather: "#1a1210", oxblood: "#5a1a1a", brass: "#c9a24a", gold: "#e8c27a", amber: "#ff9a3c", cream: "#f2e6d0", pink: "#e88aa0", dim: "rgba(242,230,208,.62)", faint: "rgba(242,230,208,.18)" };
 const display: CSSProperties = { fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontWeight: 900 };
@@ -226,8 +226,9 @@ function SmokeTrail({ area, active }: { area: React.RefObject<HTMLElement | null
     el.addEventListener("pointerdown", tap);
     el.addEventListener("pointerenter", enter);
     el.addEventListener("pointerleave", leave);
-    let raf = 0, frame = 0;
-    const loop = () => {
+    let frame = 0;
+    // only while the room is on screen — the smoke used to keep drawing long after you scrolled away
+    const stop = loopWhileVisible(el, () => {
       frame++;
       if (!coarse && px >= 0 && frame % 5 === 0) emit(px, py, 1); // a lit cigar keeps smoking when you hold still
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -240,10 +241,8 @@ function SmokeTrail({ area, active }: { area: React.RefObject<HTMLElement | null
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
         if (s.life >= s.max) puffs.splice(i, 1);
       }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); el.removeEventListener("pointermove", move); el.removeEventListener("pointerdown", tap); el.removeEventListener("pointerenter", enter); el.removeEventListener("pointerleave", leave); setOn(false); };
+    }, "0px");
+    return () => { stop(); ro.disconnect(); el.removeEventListener("pointermove", move); el.removeEventListener("pointerdown", tap); el.removeEventListener("pointerenter", enter); el.removeEventListener("pointerleave", leave); setOn(false); };
   }, [area, active]);
   if (!active) return null;
   return (

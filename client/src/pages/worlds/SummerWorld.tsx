@@ -462,8 +462,8 @@ export default function SummerWorld({ perfume }: WorldProps) {
         @keyframes y09-spin { to { transform: rotate(360deg); } }
         .y09-blink { animation: y09-blink 1s steps(2) infinite; }
         @keyframes y09-blink { 50% { opacity: .2; } }
-        .y09-eq { height: 30%; animation: y09-eq ease-in-out infinite alternate; }
-        @keyframes y09-eq { from { height: 12%; } to { height: 100%; } }
+        .y09-eq { height: 100%; transform-origin: 50% 100%; animation: y09-eq ease-in-out infinite alternate; }
+        @keyframes y09-eq { from { transform: scaleY(.12); } to { transform: none; } }
         .y09-a { color: ${LINK}; text-decoration: underline; }
         .y09-a:hover { color: #ff3e8a; }
         .y09-btn { font-family: Tahoma, Verdana, sans-serif; font-size: 12px; padding: 3px 12px; color: #000; background: linear-gradient(#ffffff, #ece9d8); border: 1px solid #7a8a99; border-radius: 3px; box-shadow: inset 0 -1px 0 rgba(0,0,0,.1); cursor: pointer; }

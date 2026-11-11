@@ -626,6 +626,44 @@ export const perfumes: Perfume[] = [
     accentColorDim: "rgba(201,169,110,0.35)",
     radarFill: "rgba(201,169,110,0.12)",
     keywords: { ru: "СЫРОЙ · РОСКОШНЫЙ · ДОМИНИРУЮЩИЙ", en: "RAW · OPULENT · DOMINANT" },
+    guide: {
+      plain: {
+        ru: "Тёмные ягоды, раздавленные в кожаной перчатке. Сначала сочная малина и ежевика с розовым перцем — сладко, ярко и чуть колко. Потом густой шафран и тёмная роза: по-королевски тяжело и тепло. А в основе кожа, уд и табак, которые ваниль и амбра делают бархатными. Громкий, дорогой, вечерний аромат — он входит в комнату раньше вас.",
+        en: "Dark berries crushed inside a leather glove. First juicy raspberry and blackberry with pink pepper — sweet, bright and a little prickly. Then dense saffron and a dark rose: heavy and warm, like royalty. And underneath, leather, oud and tobacco, made velvety by vanilla and amber. A loud, expensive evening scent — it walks into the room before you do.",
+      },
+      drydown: [
+        { when: { ru: "Кровь", en: "Blood" }, notes: "top", text: { ru: "Первые минуты: малина и ежевика лопаются, как спелые ягоды, розовый перец щекочет нос. Сладко и дерзко.", en: "The first minutes: raspberry and blackberry burst like ripe fruit, pink pepper tickles the nose. Sweet and bold." } },
+        { when: { ru: "Золото", en: "Gold" }, notes: "heart", text: { ru: "Через полчаса приходят шафран и роза. Пряно, густо, немного металлически — как золото, нагретое в руке.", en: "After half an hour saffron and rose arrive. Spicy, dense, a little metallic — like gold warmed in your hand." } },
+        { when: { ru: "Кожа", en: "Leather" }, notes: "base", text: { ru: "К вечеру остаются кожа, уд и табак, а под ними ваниль, ирис и амбра. Тёмно, тепло и очень уверенно — до самой ночи.", en: "By evening leather, oud and tobacco remain, with vanilla, iris and amber beneath. Dark, warm and very sure of itself — all night long." } },
+      ],
+      facets: [
+        { label: { ru: "Кожа и уд", en: "Leather & oud" }, value: 90 },
+        { label: { ru: "Тёмные ягоды", en: "Dark berries" }, value: 82 },
+        { label: { ru: "Пряности и шафран", en: "Spice & saffron" }, value: 74 },
+        { label: { ru: "Роза", en: "Rose" }, value: 62 },
+        { label: { ru: "Табак и дым", en: "Tobacco & smoke" }, value: 58 },
+        { label: { ru: "Сладость", en: "Sweetness" }, value: 46 },
+      ],
+      longevity: { ru: "10–12 часов", en: "10–12 hours" },
+      sillage: { ru: "Мощный — его слышно через всю комнату", en: "Powerful — noticed across the whole room" },
+      season: { ru: "Осень и зима", en: "Autumn and winter" },
+      time: { ru: "Вечер, ужины, выходы в свет, важные встречи", en: "Evenings, dinners, nights out, big meetings" },
+      tip: { ru: "Хватит двух нажатий — на запястье и на шею. Больше — и он займёт всю комнату.", en: "Two sprays are enough — wrist and neck. Any more and it takes over the room." },
+      scenes: {
+        ru: [
+          "Вечерний приём в старом особняке.",
+          "Бархатное кресло у камина и бокал красного вина.",
+          "Ночной Лондон из окна чёрного автомобиля.",
+          "Перстень с печаткой и кожаные перчатки.",
+        ],
+        en: [
+          "An evening reception in an old mansion.",
+          "A velvet armchair by the fire and a glass of red wine.",
+          "Night-time London from the window of a black car.",
+          "A signet ring and leather gloves.",
+        ],
+      },
+    },
   },
   {
     id: "self-addicted",

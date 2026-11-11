@@ -11,7 +11,7 @@ import { useLang } from "@/contexts/LangContext";
 import Bottle3D from "@/components/Bottle3D";
 import RequestDialog, { type DialogSkin } from "@/components/RequestDialog";
 import { useReveal } from "@/lib/useReveal";
-import { fragmentText, pick, prefersReducedMotion, type WorldProps } from "./shared";
+import { fragmentText, loopWhileVisible, pick, prefersReducedMotion, type WorldProps } from "./shared";
 
 const C = { white: "#f6f8f9", panel: "#eceff1", ink: "#1f2a33", dim: "rgba(31,42,51,.58)", faint: "rgba(31,42,51,.14)", blue: "#9cc7e6", ice: "#d9ecf8", mint: "#bfe5d6", sun: "#ffd76a", led: "#47e0a0" };
 const head: CSSProperties = { fontFamily: "'Jost', sans-serif", fontWeight: 300 };
@@ -89,12 +89,10 @@ function Machine({ t, description }: { t: (ru: string, en: string) => string; de
   const { ref, p } = usePinProgress<HTMLElement>(!still);
   const [idle, setIdle] = useState(0);
   useEffect(() => {
-    if (still) return;
-    let raf = 0; const t0 = performance.now();
-    const loop = (now: number) => { setIdle(((now - t0) / 1000) * 24); raf = requestAnimationFrame(loop); };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [still]);
+    if (still || !ref.current) return;
+    const t0 = performance.now();
+    return loopWhileVisible(ref.current, (now) => setIdle(((now - t0) / 1000) * 24), "0px");
+  }, [still, ref]);
   const spin = idle + p * 1440;
   const door = still ? 0 : Math.max(0, Math.min(1, (p - 0.55) / 0.2));
   const sheet = still ? 0 : Math.max(0, Math.min(1, (p - 0.72) / 0.26));
@@ -215,7 +213,7 @@ function Clothesline({ lang, t }: { lang: "ru" | "en"; t: (ru: string, en: strin
     const el = area.current; if (!el || prefersReducedMotion()) return;
     // a little spring per garment: the wind pushes it away from the pointer, it swings back
     const st = LINE.map(() => ({ a: 0, v: 0 }));
-    let lastX = 0, lastT = 0, raf = 0;
+    let lastX = 0, lastT = 0;
     const move = (e: PointerEvent) => {
       const now = performance.now(), dt = Math.max(8, now - lastT);
       const speed = Math.min(3, Math.abs(e.clientX - lastX) / dt);
@@ -229,7 +227,7 @@ function Clothesline({ lang, t }: { lang: "ru" | "en"; t: (ru: string, en: strin
       });
     };
     const t0 = performance.now();
-    const loop = (now: number) => {
+    const stop = loopWhileVisible(el, (now) => {
       const breeze = Math.sin((now - t0) / 1300);
       st.forEach((s, i) => {
         const target = breeze * (2 + (i % 3));
@@ -237,11 +235,9 @@ function Clothesline({ lang, t }: { lang: "ru" | "en"; t: (ru: string, en: strin
         s.a = Math.max(-38, Math.min(38, s.a));
         const it = items.current[i]; if (it) it.style.transform = `rotate(${s.a}deg)`;
       });
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
+    }, "0px");
     window.addEventListener("pointermove", move);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("pointermove", move); };
+    return () => { stop(); window.removeEventListener("pointermove", move); };
   }, []);
   return (
     <section style={{ position: "relative", minHeight: "100svh", overflow: "hidden", background: "#cfe5f4" }}>

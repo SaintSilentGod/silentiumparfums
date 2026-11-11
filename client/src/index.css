@@ -149,3 +149,6 @@
 
 /* Selection */
 ::selection { background: rgba(201,169,110,0.2); color: #e8e4dc; }
+
+/* sections far off screen stop their CSS loops (toggled by PerfumePage) */
+[data-offscreen], [data-offscreen] *, [data-offscreen] *::before, [data-offscreen] *::after { animation-play-state: paused !important; }

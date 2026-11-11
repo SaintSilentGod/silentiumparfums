@@ -608,12 +608,28 @@ function LegacyPerfumePage() {
   );
 }
 
+// CSS animations inside sections that are far off screen get paused (rule in index.css): every world has
+// dozens of endless loops — snow, steam, flames — and on a phone they all ticked at once, wherever you were.
+function usePauseOffscreenSections(key: string) {
+  useEffect(() => {
+    const io = new IntersectionObserver((es) => es.forEach((e) => e.target.toggleAttribute("data-offscreen", !e.isIntersecting)), { rootMargin: "50% 0px" });
+    const seen = new WeakSet<Element>();
+    const scan = () => document.querySelectorAll("section").forEach((s) => { if (!seen.has(s)) { seen.add(s); io.observe(s); } });
+    scan();
+    // worlds are lazy and some sections mount later
+    const mo = new MutationObserver(scan);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => { mo.disconnect(); io.disconnect(); document.querySelectorAll("[data-offscreen]").forEach((s) => s.removeAttribute("data-offscreen")); };
+  }, [key]);
+}
+
 // Fragrances with their own world get it; the rest keep the original template.
 export default function PerfumePage() {
   const params = useParams<{ id: string }>();
   const perfume = getPerfumeById(params.id);
   const World = perfume ? worlds[perfume.id] : undefined;
   useEffect(() => { window.scrollTo(0, 0); }, [params.id]);
+  usePauseOffscreenSections(params.id);
   if (perfume && World) return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#080808" }} />}><World key={perfume.id} perfume={perfume} /></React.Suspense>;
   return <LegacyPerfumePage key={params.id} />;
 }

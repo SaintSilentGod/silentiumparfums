@@ -12,7 +12,7 @@ import { useLang } from "@/contexts/LangContext";
 import Bottle3D from "@/components/Bottle3D";
 import RequestDialog, { type DialogSkin } from "@/components/RequestDialog";
 import { useReveal } from "@/lib/useReveal";
-import { fragmentText, pick, prefersReducedMotion, type WorldProps } from "./shared";
+import { fragmentText, loopWhileVisible, pick, prefersReducedMotion, type WorldProps } from "./shared";
 
 const C = { wood: "#6b4426", woodD: "#2a170c", woodL: "#a8743f", ink: "#1e120a", cream: "#f3e2c4", ember: "#ff7a2a", red: "#d2301c", ice: "#cfe3f2", night: "#0d1a2e", dim: "rgba(243,226,196,.66)" };
 const display: CSSProperties = { fontFamily: "'Yeseva One', 'Playfair Display', serif" };
@@ -169,8 +169,8 @@ function SteamGlass() {
       if (Math.random() < 0.12) drops.push({ x: x + (Math.random() - 0.5) * 46, y: y + 24, v: 0.3 + Math.random() * 0.7, life: 220 });
     };
     window.addEventListener("pointermove", wipe);
-    let raf = 0, frame = 0;
-    const loop = () => {
+    let frame = 0;
+    const stop = loopWhileVisible(cv, () => {
       frame++;
       if (!reduced && frame % 4 === 0) fog(0.005);
       ctx.globalCompositeOperation = "destination-out";
@@ -181,10 +181,8 @@ function SteamGlass() {
         if (d.life <= 0) drops.splice(i, 1);
       }
       ctx.globalCompositeOperation = "source-over";
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("pointermove", wipe); };
+    }, "0px");
+    return () => { stop(); ro.disconnect(); window.removeEventListener("pointermove", wipe); };
   }, []);
   return <canvas ref={ref} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", filter: "blur(6px)" }} />;
 }
@@ -504,8 +502,8 @@ export default function BanyaWorld({ perfume }: WorldProps) {
         @keyframes bn-leaf { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), 260px) rotate(var(--r)); opacity: 0; } }
         .bn-ladle { animation: bn-ladle 2.4s ease-in-out both; }
         @keyframes bn-ladle { 0% { transform: translate(30%, -30%) rotate(0); opacity: 0; } 15% { transform: none; opacity: 1; } 30%, 62% { transform: rotate(-26deg); } 85% { transform: none; opacity: 1; } 100% { transform: translate(30%, -30%); opacity: 0; } }
-        .bn-stream { position: absolute; left: 4%; top: 52%; width: 5px; height: 0; border-radius: 99px; background: linear-gradient(rgba(220,240,255,.95), rgba(220,240,255,.2)); transform-origin: 50% 0; transform: rotate(26deg); animation: bn-stream 2.4s ease-in-out both; }
-        @keyframes bn-stream { 0%, 30% { height: 0; opacity: 0; } 36% { height: 46px; opacity: 1; } 58% { height: 46px; opacity: 1; } 66%, 100% { height: 0; opacity: 0; } }
+        .bn-stream { position: absolute; left: 4%; top: 52%; width: 5px; height: 46px; scale: 1 0; border-radius: 99px; background: linear-gradient(rgba(220,240,255,.95), rgba(220,240,255,.2)); transform-origin: 50% 0; transform: rotate(26deg); animation: bn-stream 2.4s ease-in-out both; }
+        @keyframes bn-stream { 0%, 30% { scale: 1 0; opacity: 0; } 36% { scale: 1 1; opacity: 1; } 58% { scale: 1 1; opacity: 1; } 66%, 100% { scale: 1 0; opacity: 0; } }
         .bn-burst { position: absolute; left: 0; top: 0; width: 220px; margin: -110px 0 0 -110px; opacity: 0; animation: bn-burst 2.8s cubic-bezier(.2,.7,.3,1) forwards; }
         @keyframes bn-burst { 0% { transform: translate(var(--x), 40px) scale(.3) rotate(0); opacity: 0; } 15% { opacity: .95; } 100% { transform: translate(calc(var(--x) * 3), -360px) scale(2.4) rotate(var(--rot)); opacity: 0; } }
         .bn-idle { opacity: .35; animation: bn-idle 6s ease-in-out infinite; } @keyframes bn-idle { 0%, 100% { transform: translateY(10px) scale(.9); opacity: .2; } 50% { transform: translateY(-30px) scale(1.05); opacity: .45; } }

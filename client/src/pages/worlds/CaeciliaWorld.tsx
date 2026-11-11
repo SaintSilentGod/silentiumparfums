@@ -100,7 +100,10 @@ function Petals() {
   if (prefersReducedMotion()) return null;
   return (
     <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 40, overflow: "hidden" }}>
-      {petals.map((p, i) => <img key={i} className="sc-petal" src={p.src} alt="" style={{ left: `${p.x}%`, width: p.s, animationDuration: `${p.d}s`, animationDelay: `${p.delay}s`, ["--r" as string]: `${p.r}deg` }} />)}
+      {petals.map((p, i) => {
+        const timing = { animationDuration: `${p.d}s`, animationDelay: `${p.delay}s` };
+        return <span key={i} className="sc-petal" style={{ left: `${p.x}%`, width: p.s, ...timing }}><img src={p.src} alt="" style={{ rotate: `${p.r}deg`, ...timing }} /></span>;
+      })}
     </div>
   );
 }
@@ -405,14 +408,11 @@ export default function CaeciliaWorld({ perfume }: WorldProps) {
   return (
     <div style={{ ...body, background: C.ivory, color: C.ink, minHeight: "100vh", overflowX: "clip" }}>
       <style>{`
-        .sc-petal { position: absolute; top: -60px; opacity: .9; animation: sc-fall linear infinite; filter: drop-shadow(0 3px 4px rgba(90,70,40,.18)); }
-        @keyframes sc-fall {
-          0% { transform: translate(0, -8vh) rotate(var(--r)); }
-          25% { transform: translate(40px, 25vh) rotate(calc(var(--r) + 90deg)); }
-          50% { transform: translate(-20px, 55vh) rotate(calc(var(--r) + 180deg)); }
-          75% { transform: translate(35px, 82vh) rotate(calc(var(--r) + 260deg)); }
-          100% { transform: translate(0, 112vh) rotate(calc(var(--r) + 340deg)); }
-        }
+        /* fall and spin are two plain transform animations (no var() in keyframes), so they stay on the compositor */
+        .sc-petal { position: absolute; top: -60px; opacity: .9; animation: sc-fall linear infinite; }
+        .sc-petal > img { display: block; width: 100%; animation: sc-spin linear infinite; filter: drop-shadow(0 3px 4px rgba(90,70,40,.18)); }
+        @keyframes sc-fall { 0% { transform: translate(0, -8vh); } 25% { transform: translate(40px, 25vh); } 50% { transform: translate(-20px, 55vh); } 75% { transform: translate(35px, 82vh); } 100% { transform: translate(0, 112vh); } }
+        @keyframes sc-spin { 0% { transform: rotate(0); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(260deg); } 100% { transform: rotate(340deg); } }
         .sc-hero-far { transform: translate3d(0, calc(var(--sy, 0) * .25px), 0); }
         .sc-hero-bg { transform: translate3d(calc(var(--mx, 0) * -14px), calc(var(--my, 0) * -10px), 0) scale(1.07); transition: transform .9s cubic-bezier(.2,.8,.3,1); }
         .sc-hero-front { transform: translate3d(calc(var(--mx, 0) * -24px), calc(var(--my, 0) * -10px), 0) scale(1.06); transition: transform .9s cubic-bezier(.2,.8,.3,1); transform-origin: 50% 100%; }

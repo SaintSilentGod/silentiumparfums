@@ -55,7 +55,9 @@ export default function Bottle3D({
     let disposed = false;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // phones have 3x screens and weak GPUs: the glass shader is expensive per pixel, 1.5x still looks sharp
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     const EXPOSURE: Record<BottleLighting, number> = { candle: 0.95, daylight: 1.15, studio: 1.0, neon: 1.1, gold: 1.05, fog: 1.25, heat: 1.0 };
