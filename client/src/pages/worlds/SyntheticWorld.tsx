@@ -347,7 +347,6 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
   const n = perfume.scentNotes;
   const stages = g.drydown.map((d) => ({ when: Lp(d.when), text: Lp(d.text), notes: n[d.notes] ? pick(lang, n[d.notes]!).join(" · ") : "" }));
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда", "When"), Lp(g.time)],
@@ -480,7 +479,7 @@ export default function SyntheticWorld({ perfume }: WorldProps) {
         <section style={{ marginBottom: 120, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 50, alignItems: "center" }}>
           <div>
             <H n="04" title={t("сообщения", "messages")} sub={t("которые пришли после полуночи", "that arrived after midnight")} />
-            <p style={{ fontSize: 15, lineHeight: 1.7, color: C.dim, maxWidth: 420 }}>{t("Пять SMS, которые ты так и не удалил. Ты не знаешь, что из этого было на самом деле.", "Five texts you never deleted. You don't know which of them really happened.")}</p>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: C.dim, maxWidth: 420 }}>{t("Пять SMS, которые ты так и не удалил. Все — о том, чем от тебя пахло той ночью.", "Five texts you never deleted. All of them about what you smelled of that night.")}</p>
           </div>
           <FlipPhone messages={fragments} t={t} />
         </section>

@@ -157,7 +157,6 @@ export default function SunlitWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), L(g.longevity)],
     [t("Шлейф", "Sillage"), L(g.sillage)],
     [t("Сезон", "Season"), L(g.season)],
     [t("Когда носить", "When to wear"), L(g.time)],

@@ -5,7 +5,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useLang } from "@/contexts/LangContext";
-import { perfumes } from "@/lib/perfumes";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -150,18 +149,15 @@ export default function Home() {
             transition: "opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          <h1
-            className="font-display"
-            style={{
-              fontSize: "clamp(4rem, 12vw, 10rem)",
-              fontWeight: 300,
-              letterSpacing: "0.15em",
-              color: "#e8e4dc",
-              lineHeight: 1,
-              fontStyle: "italic",
-            }}
-          >
-            Silentium
+          <h1 style={{ margin: 0, lineHeight: 0 }}>
+            <img
+              src="/images/logo-silentium.webp"
+              alt="Silentium"
+              width={916}
+              height={254}
+              draggable={false}
+              style={{ width: "clamp(260px, 62vw, 720px)", height: "auto", display: "block" }}
+            />
           </h1>
         </div>
 
@@ -256,44 +252,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Bottom coordinates */}
-      <div
-        className="absolute bottom-8 left-8 z-30"
-        style={{
-          opacity: btnVisible ? 1 : 0,
-          transition: "opacity 1s ease 0.5s",
-        }}
-      >
-        <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.18)", fontSize: "0.55rem" }}>
-          {t("ЭМОЦИОНАЛЬНАЯ КАРТА", "EMOTIONAL MAP")} — {perfumes.length} {t("АРОМАТОВ", "FRAGRANCES")}
-        </span>
-      </div>
-
-      {/* Bottom right signal */}
-      <div
-        className="absolute bottom-8 right-8 z-30 flex items-center gap-2"
-        style={{
-          opacity: btnVisible ? 1 : 0,
-          transition: "opacity 1s ease 0.5s",
-        }}
-      >
-        <span className="font-mono-label" style={{ color: "rgba(232,228,220,0.18)", fontSize: "0.55rem" }}>
-          SIGNAL CLARITY
-        </span>
-        <div className="flex items-end gap-0.5">
-          {[3, 5, 7, 9, 7, 5, 3, 5].map((h, i) => (
-            <div
-              key={i}
-              style={{
-                width: "2px",
-                height: `${h}px`,
-                background: i < 5 ? "rgba(201,169,110,0.6)" : "rgba(232,228,220,0.15)",
-                borderRadius: "1px",
-              }}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

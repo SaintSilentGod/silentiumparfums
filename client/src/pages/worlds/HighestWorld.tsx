@@ -483,7 +483,6 @@ export default function HighestWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],
@@ -571,8 +570,8 @@ export default function HighestWorld({ perfume }: WorldProps) {
                 <span style={{ ...sign, fontSize: 10, letterSpacing: ".3em" }}>PH</span>
               </div>
               <div>
-                <p style={{ ...sign, fontSize: 10, letterSpacing: ".3em", opacity: 0.75 }}>{t("Стойкость", "Longevity")}</p>
-                <p style={{ ...display, fontSize: "clamp(2.6rem, 6vw, 4.4rem)", lineHeight: 1 }}>{Lp(g.longevity)}</p>
+                <p style={{ ...sign, fontSize: 10, letterSpacing: ".3em", opacity: 0.75 }}>{t("Шлейф", "Sillage")}</p>
+                <p style={{ ...display, fontSize: "clamp(2.6rem, 6vw, 4.4rem)", lineHeight: 1 }}>{Lp(g.sillage).split(" — ")[0]}</p>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", ...mono, fontSize: 11, letterSpacing: ".18em" }}>
                 <span>{t("ЧЛЕН КЛУБА", "MEMBER")} · №0079</span>

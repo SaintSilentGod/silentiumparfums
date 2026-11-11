@@ -188,7 +188,7 @@ function Coronation({ stages, t }: { stages: { when: string; text: string; notes
   return (
     <section ref={ref} style={{ position: "relative", height: still ? "auto" : "330svh", background: C.black }}>
       <div style={{ position: still ? "relative" : "sticky", top: 0, minHeight: "100svh", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", padding: "74px clamp(16px,4vw,48px) 30px", background: `radial-gradient(ellipse at 30% 50%, ${ACT_BG[stage]}, ${C.black} 72%)`, transition: "background 1s ease" }}>
-        <div style={{ textAlign: "center" }}>
+        <div className="kg-acts-head" style={{ textAlign: "center" }}>
           <p style={{ ...label, fontSize: 13, letterSpacing: ".45em", color: C.gold }}>{t("Как раскрывается на коже", "How it unfolds on skin")}</p>
           <h2 style={{ ...regal, fontSize: "clamp(2rem, 4.6vw, 3.6rem)", marginTop: 6, ...GOLD_TEXT }}>{t("Коронация в трёх актах", "A coronation in three acts")}</h2>
         </div>
@@ -201,7 +201,7 @@ function Coronation({ stages, t }: { stages: { when: string; text: string; notes
           </div>
           <div>
             {/* the crown with its three gems */}
-            <div style={{ position: "relative", width: "min(240px, 58%)", margin: "0 auto 44px" }}>
+            <div className="kg-crown" style={{ position: "relative", width: "min(240px, 58%)", margin: "0 auto 44px" }}>
               <img src={`${IMG}/cushion.webp`} alt="" aria-hidden style={{ width: "100%", display: "block", marginTop: "18%" }} />
               <img src={`${IMG}/crown.webp`} alt={t("Корона на бархатной подушке", "The crown on a velvet cushion")} style={{ position: "absolute", left: "19%", width: "62%", top: "-30%", filter: "drop-shadow(0 10px 10px rgba(0,0,0,.6))" }} />
               <div style={{ position: "absolute", left: 0, right: 0, bottom: "-30px", display: "flex", justifyContent: "center", gap: 18 }}>
@@ -210,13 +210,13 @@ function Coronation({ stages, t }: { stages: { when: string; text: string; notes
                 ))}
               </div>
             </div>
-            <div className="kg-act-cards" style={{ position: "relative", minHeight: "min(36svh, 300px)" }}>
+            <div className={`kg-act-cards${still ? " still" : ""}`} style={{ position: "relative", minHeight: "min(36svh, 300px)" }}>
               {stages.map((s, i) => (
                 <article key={i} style={{ position: still ? "relative" : "absolute", inset: still ? undefined : 0, opacity: still || stage === i ? 1 : 0, transform: still || stage === i ? "none" : `translateY(${i < stage ? -22 : 22}px)`, transition: "opacity .7s ease, transform .9s cubic-bezier(.16,1,.3,1)", marginBottom: still ? 30 : 0, textAlign: "center" }}>
                   <p style={{ ...label, fontSize: 12, letterSpacing: ".4em", color: GEMS[i].c === "#2a1a14" ? C.gold : GEMS[i].c }}>{actName[i]}</p>
-                  <p style={{ ...regal, fontSize: "clamp(2rem, 3.4vw, 2.8rem)", color: C.cream, marginTop: 4 }}>{s.when}</p>
-                  <p style={{ ...serif, fontSize: "clamp(1.15rem, 1.7vw, 1.35rem)", lineHeight: 1.5, marginTop: 10, color: C.cream }}>{s.text}</p>
-                  <p style={{ ...label, fontSize: 12, letterSpacing: ".18em", color: C.dim, marginTop: 14, lineHeight: 1.8 }}>{s.notes}</p>
+                  <p className="kg-act-when" style={{ ...regal, fontSize: "clamp(2rem, 3.4vw, 2.8rem)", color: C.cream, marginTop: 4 }}>{s.when}</p>
+                  <p className="kg-act-text" style={{ ...serif, fontSize: "clamp(1.15rem, 1.7vw, 1.35rem)", lineHeight: 1.5, marginTop: 10, color: C.cream }}>{s.text}</p>
+                  <p className="kg-act-notes" style={{ ...label, fontSize: 12, letterSpacing: ".18em", color: C.dim, marginTop: 14, lineHeight: 1.8 }}>{s.notes}</p>
                 </article>
               ))}
             </div>
@@ -338,7 +338,6 @@ export default function KingWorld({ perfume }: WorldProps) {
     { title: t("Подвалы · база", "The vaults · base"), notes: n.base ? pick(lang, n.base) : [] },
   ];
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],
@@ -385,8 +384,14 @@ export default function KingWorld({ perfume }: WorldProps) {
         @media (prefers-reduced-motion: reduce) { .kg-hint, .kg-candle, .kg-toss { animation: none; } }
         @media (max-width: 820px) {
           .kg-acts { grid-template-columns: 1fr !important; gap: 14px !important; }
-          .kg-act-frame { width: min(78%, 34svh) !important; }
-          .kg-act-cards { min-height: 250px !important; }
+          .kg-acts-head h2 { font-size: 1.7rem !important; }
+          .kg-act-frame { width: min(64%, 26svh) !important; }
+          .kg-crown { width: 96px !important; margin: 0 auto 44px !important; }
+          .kg-act-cards { min-height: 0 !important; }
+          .kg-act-cards:not(.still) { height: min(40svh, 300px); }
+          .kg-act-when { font-size: 1.6rem !important; }
+          .kg-act-text { font-size: 1rem !important; line-height: 1.45 !important; margin-top: 6px !important; }
+          .kg-act-notes { font-size: 10px !important; margin-top: 8px !important; line-height: 1.6 !important; }
           .kg-article { grid-template-columns: 1fr !important; }
           .kg-plain { font-size: 1.08rem !important; line-height: 1.42 !important; }
           .kg-mirrors-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: 16px; }

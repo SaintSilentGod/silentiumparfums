@@ -232,7 +232,6 @@ export default function SeanceWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), L(g.longevity)],
     [t("Шлейф", "Sillage"), L(g.sillage)],
     [t("Сезон", "Season"), L(g.season)],
     [t("Время", "Time of day"), L(g.time)],

@@ -389,7 +389,6 @@ export default function SelfWorld({ perfume }: WorldProps) {
     { title: t("База", "Base"), notes: n.base ? pick(lang, n.base) : [] },
   ];
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],

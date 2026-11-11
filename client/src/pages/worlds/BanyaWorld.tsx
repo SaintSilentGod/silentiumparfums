@@ -485,8 +485,6 @@ export default function BanyaWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
-    [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],
   ];
@@ -558,10 +556,9 @@ export default function BanyaWorld({ perfume }: WorldProps) {
           </Reveal>
           <Reveal delay={150}>
             <div style={{ textAlign: "center", padding: "36px 22px", borderRadius: 10, background: "rgba(30,18,10,.45)", boxShadow: "inset 0 0 0 2px rgba(255,220,170,.12), 0 30px 60px rgba(0,0,0,.35)" }}>
-              <p style={{ ...mono, fontSize: 11, letterSpacing: ".25em", color: "#ffd7a8" }}>{t("СТОЙКОСТЬ", "LONGEVITY")}</p>
-              <p style={{ ...display, fontSize: "clamp(4rem, 9vw, 6.5rem)", lineHeight: 1, margin: "10px 0", color: C.ember, textShadow: "0 0 40px rgba(255,122,42,.45)" }}>{Lp(g.longevity).replace(/\s.*$/, "")}</p>
-              <p style={{ ...display, fontSize: 22 }}>{Lp(g.longevity).replace(/^\S+\s?/, "")}</p>
-              <p style={{ fontSize: 14, lineHeight: 1.55, color: C.dim, marginTop: 14 }}>{t("Хвоя уходит первой, а тёплое дерево остаётся на коже до вечера.", "The pine goes first; the warm wood stays on the skin until evening.")}</p>
+              <p style={{ ...mono, fontSize: 11, letterSpacing: ".25em", color: "#ffd7a8" }}>{t("ШЛЕЙФ", "SILLAGE")}</p>
+              <p style={{ ...display, fontSize: "clamp(2.6rem, 6vw, 4.4rem)", lineHeight: 1, margin: "10px 0", color: C.ember, textShadow: "0 0 40px rgba(255,122,42,.45)" }}>{Lp(g.sillage).split(" — ")[0]}</p>
+              <p style={{ fontSize: 14, lineHeight: 1.55, color: C.dim, marginTop: 14 }}>{Lp(g.sillage).split(" — ")[1]}</p>
             </div>
           </Reveal>
         </div>

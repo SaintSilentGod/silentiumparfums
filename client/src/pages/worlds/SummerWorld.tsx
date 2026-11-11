@@ -442,7 +442,6 @@ export default function SummerWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],

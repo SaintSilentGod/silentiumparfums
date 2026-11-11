@@ -397,7 +397,6 @@ export default function LaundryWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
     [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],
@@ -465,9 +464,6 @@ export default function LaundryWorld({ perfume }: WorldProps) {
               <div aria-hidden style={{ position: "absolute", left: "50%", top: "50%", width: "100%", aspectRatio: "1", transform: "translate(-50%, -50%)", borderRadius: "50%", background: `radial-gradient(circle at 40% 35%, #eaf4fb, ${C.blue})` }} />
               <Bottle3D style={{ position: "absolute", inset: 0 }} lighting="daylight" {...bottleLook} spin={0.2} drawLabel={bottleLabel} />
             </div>
-            <p style={{ ...label, fontSize: 10, color: C.dim, marginTop: 10 }}>{t("Стойкость", "Longevity")}</p>
-            <p style={{ ...head, fontSize: "clamp(3.4rem, 7vw, 5.4rem)", lineHeight: 1 }}>{Lp(g.longevity).replace(/\s.*$/, "")}</p>
-            <p style={{ ...label, fontSize: 11 }}>{Lp(g.longevity).replace(/^\S+\s?/, "")}</p>
           </Reveal>
         </div>
       </section>

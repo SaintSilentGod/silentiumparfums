@@ -420,8 +420,6 @@ export default function FogWorld({ perfume }: WorldProps) {
   };
 
   const facts: [string, string][] = [
-    [t("Стойкость", "Longevity"), Lp(g.longevity)],
-    [t("Шлейф", "Sillage"), Lp(g.sillage)],
     [t("Сезон", "Season"), Lp(g.season)],
     [t("Когда носить", "When to wear"), Lp(g.time)],
   ];
@@ -487,10 +485,9 @@ export default function FogWorld({ perfume }: WorldProps) {
             {g.tip && <p style={{ marginTop: 24, fontSize: 15, color: C.dim }}>— {Lp(g.tip)}</p>}
           </Emerge>
           <Emerge delay={300} style={{ textAlign: "center" }}>
-            <p style={{ ...wide, fontSize: 11, color: C.dim }}>{t("Стойкость", "Longevity")}</p>
-            <p style={{ ...serif, fontSize: "clamp(4.5rem, 10vw, 8rem)", lineHeight: 1, margin: "8px 0" }}>{Lp(g.longevity).replace(/\s.*$/, "")}</p>
-            <p style={{ ...wide, fontSize: 12 }}>{Lp(g.longevity).replace(/^\S+\s?/, "")}</p>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: C.dim, marginTop: 18, maxWidth: 300, marginInline: "auto" }}>{t("Озон уходит за час, а дёготь и мох остаются до вечера.", "The ozone fades within an hour; the tar and moss stay till evening.")}</p>
+            <p style={{ ...wide, fontSize: 11, color: C.dim }}>{t("Шлейф", "Sillage")}</p>
+            <p style={{ ...serif, fontSize: "clamp(3rem, 6.5vw, 5.4rem)", lineHeight: 1, margin: "8px 0" }}>{Lp(g.sillage).split(" — ")[0]}</p>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: C.dim, marginTop: 18, maxWidth: 300, marginInline: "auto" }}>{Lp(g.sillage).split(" — ")[1]}</p>
           </Emerge>
         </div>
       </section>
