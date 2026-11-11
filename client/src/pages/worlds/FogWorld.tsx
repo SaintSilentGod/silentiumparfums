@@ -108,6 +108,14 @@ const TRUNKS = [
   { src: "birch-3", x: 30, h: 120, depth: 1.5, flip: true },
   { src: "birch-1", x: 66, h: 115, depth: 1.3, flip: false },
 ];
+// Phones get their own, sparser set. iOS Safari drops huge scaled layers (they turn into blank fog), so on a phone
+// each trunk scales on its own small box, without blur, and never grows as large as on desktop.
+const BIRCH_AR: Record<string, number> = { "birch-1": 233 / 1536, "birch-2": 341 / 1536, "birch-3": 208 / 1536 };
+const TRUNKS_PHONE = [
+  { src: "birch-3", x: 13, h: 128, depth: 1.5, flip: true },
+  { src: "birch-2", x: 90, h: 128, depth: 1.9, flip: true },
+  { src: "birch-1", x: 72, h: 92, depth: 1.1, flip: false, far: true },
+];
 
 function Grove({ t, description }: { t: (ru: string, en: string) => string; description: string }) {
   const still = prefersReducedMotion();
@@ -119,24 +127,35 @@ function Grove({ t, description }: { t: (ru: string, en: string) => string; desc
   const white = still ? 0 : Math.max(0, 1 - k / 0.32); // the whiteout lifts first
   const titleOut = Math.min(1, k / 0.22);
   const bh = 0.15 * 1024 * stump.s; // bottle height in screen px before the zoom
-  const spread = vp.w < 820 ? 1.45 : 1; // on a phone the trunks stand further apart, or they would fill the screen
+  const phone = vp.w < 820;
   return (
     <section ref={ref} style={{ position: "relative", height: still ? "100svh" : "320svh", background: C.milk }}>
       <div style={{ position: still ? "relative" : "sticky", top: 0, height: "100svh", overflow: "hidden" }}>
         {/* the grove and the bottle on the stump walk towards you together */}
-        <div style={{ position: "absolute", inset: 0, transformOrigin: origin, transform: `scale(${1 + k * 1.15})`, willChange: "transform" }}>
+        <div style={{ position: "absolute", inset: 0, transformOrigin: origin, transform: `scale(${1 + k * (phone ? 0.9 : 1.15)})`, willChange: "transform" }}>
           <img src={`${IMG}/grove.webp`} alt={t("Берёзовая роща в густом тумане", "A birch grove in thick fog")} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
           <div style={{ position: "absolute", left: stump.x, top: stump.y, width: bh * 0.62, height: bh, transform: "translate(-50%, -88%)" }}>
             <Bottle3D style={{ position: "absolute", inset: 0 }} lighting="fog" {...bottleLook} spin={0.12} drawLabel={bottleLabel} />
           </div>
         </div>
         {/* nearer trunks pass the camera faster */}
-        {!still && TRUNKS.map((b, i) => {
+        {!still && !phone && TRUNKS.map((b, i) => {
           const s = 1 + k * b.depth * 1.6;
           const fade = Math.max(0, Math.min(1, (1.05 - k * (0.5 + b.depth * 0.22)) * 2));
           return (
             <div key={i} aria-hidden style={{ position: "absolute", inset: 0, transformOrigin: origin, transform: `scale(${s})`, opacity: fade * (0.55 + Math.min(1, k * 3) * 0.45), pointerEvents: "none" }}>
-              <img src={`${IMG}/${b.src}.webp`} alt="" style={{ position: "absolute", left: `${50 + (b.x - 50) * spread}%`, bottom: `${-8 - b.depth * 6}%`, height: `${b.h}%`, maxWidth: "none", transform: `translateX(-50%) ${b.flip ? "scaleX(-1)" : ""}`, filter: `blur(${Math.max(0, (b.depth - 1.4) * 1.2)}px) contrast(${0.5 + b.depth * 0.13}) brightness(${1.18 - b.depth * 0.05})` }} />
+              <img src={`${IMG}/${b.src}.webp`} alt="" style={{ position: "absolute", left: `${b.x}%`, bottom: `${-8 - b.depth * 6}%`, height: `${b.h}%`, maxWidth: "none", transform: `translateX(-50%) ${b.flip ? "scaleX(-1)" : ""}`, filter: `blur(${Math.max(0, (b.depth - 1.4) * 1.2)}px) contrast(${0.5 + b.depth * 0.13}) brightness(${1.18 - b.depth * 0.05})` }} />
+            </div>
+          );
+        })}
+        {!still && phone && TRUNKS_PHONE.map((b, i) => {
+          const h = (b.h / 100) * vp.h, w = h * BIRCH_AR[b.src];
+          const left = (b.x / 100) * vp.w - w / 2, top = vp.h * (1 + (8 + b.depth * 6) / 100) - h;
+          const s = 1 + k * b.depth * 1.1;
+          const fade = Math.max(0, Math.min(1, (1.05 - k * (0.5 + b.depth * 0.3)) * 2));
+          return (
+            <div key={i} aria-hidden style={{ position: "absolute", left, top, width: w, height: h, pointerEvents: "none", transformOrigin: `${stump.x - left}px ${stump.y - top}px`, transform: `scale(${s})`, opacity: fade * (b.depth < 1.3 ? 0.75 : 1) * (0.6 + Math.min(1, k * 3) * 0.4) }}>
+              <img src={`${IMG}/${b.src}.webp`} alt="" style={{ display: "block", width: "100%", height: "100%", maxWidth: "none", transform: b.flip ? "scaleX(-1)" : undefined, ...("far" in b ? { maskImage: "linear-gradient(transparent, #000 30%)", WebkitMaskImage: "linear-gradient(transparent, #000 30%)" } : null) }} />
             </div>
           );
         })}
@@ -225,7 +244,14 @@ const STAGES = [`${IMG}/stage-rain.webp`, `${IMG}/stage-air.webp`, `${IMG}/stage
 function Clearing({ stages, t }: { stages: { when: string; text: string; notes: string }[]; t: (ru: string, en: string) => string }) {
   const still = prefersReducedMotion();
   const { ref, p } = usePinProgress<HTMLElement>(!still);
-  const stage = still ? 0 : Math.min(2, Math.floor(p * 3.05));
+  const stage = still ? 0 : Math.min(2, Math.floor(p * 3));
+  // a flick settles on the middle of a stage instead of skipping the heart (same trick as the map's landings)
+  useEffect(() => {
+    if (still) return;
+    const root = document.documentElement;
+    root.style.scrollSnapType = "y proximity";
+    return () => { root.style.scrollSnapType = ""; };
+  }, [still]);
   const dark = still ? 0 : Math.max(0, Math.min(1, (p - 0.45) / 0.45)); // white → black
   const mix = (a: number[], b: number[]) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * dark)).join(",")})`;
   const bg = mix([238, 241, 241], [11, 12, 13]);
@@ -233,6 +259,7 @@ function Clearing({ stages, t }: { stages: { when: string; text: string; notes: 
   const fogLeft = still ? 0.3 : Math.max(0, 1 - p * 1.4);
   return (
     <section ref={ref} style={{ position: "relative", height: still ? "auto" : "340svh", background: bg }}>
+      {!still && [1, 3, 5].map((n) => <div key={n} aria-hidden style={{ position: "absolute", left: 0, width: 1, height: 1, top: `calc(240svh * ${n} / 6)`, scrollSnapAlign: "start", pointerEvents: "none" }} />)}
       <div style={{ position: still ? "relative" : "sticky", top: 0, minHeight: "100svh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "70px clamp(16px,4vw,48px) 30px", overflow: "hidden", color: ink }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, opacity: fogLeft, pointerEvents: "none" }}><Drift count={5} opacity={0.75} /></div>
         <div style={{ textAlign: "center", position: "relative" }}>
@@ -247,7 +274,7 @@ function Clearing({ stages, t }: { stages: { when: string; text: string; notes: 
           </div>
           <div className="fg-lift-text" style={{ position: "relative", minHeight: "min(44svh, 360px)" }}>
             {stages.map((s, i) => (
-              <article key={i} style={{ position: still ? "relative" : "absolute", inset: still ? undefined : 0, display: "flex", flexDirection: "column", justifyContent: "center", opacity: still || stage === i ? 1 : 0, filter: still || stage === i ? "blur(0)" : "blur(10px)", transition: "opacity 1s ease, filter 1.2s ease", marginBottom: still ? 30 : 0 }}>
+              <article key={i} style={{ position: still ? "relative" : "absolute", inset: still ? undefined : 0, display: "flex", flexDirection: "column", justifyContent: "center", opacity: still || stage === i ? 1 : 0, filter: still || stage === i ? "blur(0)" : "blur(10px)", transition: "opacity .55s ease, filter .55s ease", marginBottom: still ? 30 : 0 }}>
                 <p style={{ ...wide, fontSize: 11, opacity: 0.6 }}>{String(i + 1).padStart(2, "0")} · {t(["верх", "сердце", "база"][i], ["top", "heart", "base"][i])}</p>
                 <p style={{ ...serif, fontSize: "clamp(2.4rem, 5vw, 4rem)", lineHeight: 1, marginTop: 10 }}>{s.when}</p>
                 <p style={{ ...body, fontSize: "clamp(1.05rem, 1.6vw, 1.25rem)", lineHeight: 1.6, marginTop: 16 }}>{s.text}</p>

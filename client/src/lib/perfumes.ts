@@ -495,7 +495,7 @@ export const perfumes: Perfume[] = [
       drydown: [
         { when: { ru: "Дождь", en: "Rain" }, notes: "top", text: { ru: "Холодно и мокро: озон, альдегиды, дождевая вода и мята. Как будто вышел на улицу сразу после ливня.", en: "Cold and wet: ozone, aldehydes, rainwater and mint. As if you stepped outside right after a downpour." } },
         { when: { ru: "Туман", en: "Fog" }, notes: "heart", text: { ru: "Становится тихо и прозрачно: горный воздух, корень ириса, кашмеран. Мягкая белая пелена, в которой ничего не слышно.", en: "It goes quiet and sheer: mountain air, orris root, cashmeran. A soft white veil where you can't hear a thing." } },
-        { when: { ru: "Дёготь", en: "Tar" }, notes: "base", text: { ru: "Туман уходит, и проступает тёмное: берёзовый дёготь, сухое дерево, дубовый мох и белый мускус. Дымно, смолисто и очень близко к коже.", en: "The fog lifts and the dark shows through: birch tar, dry wood, oakmoss and white musk. Smoky, resinous and very close to the skin." } },
+        { when: { ru: "Дёготь", en: "Tar" }, notes: "base", text: { ru: "Туман уходит, и проступает тёмное: берёзовый дёготь, сухое дерево, дубовый мох и белый мускус. Дымно, смолисто, и за вами тянется тёмный шлейф.", en: "The fog lifts and the dark shows through: birch tar, dry wood, oakmoss and white musk. Smoky, resinous, with a dark trail behind you." } },
       ],
       facets: [
         { label: { ru: "Свежесть и озон", en: "Freshness & ozone" }, value: 88 },
@@ -505,7 +505,7 @@ export const perfumes: Perfume[] = [
         { label: { ru: "Мох", en: "Moss" }, value: 50 },
         { label: { ru: "Сладость", en: "Sweetness" }, value: 10 },
       ],
-      sillage: { ru: "Умеренный — близко к коже, но с тёмным следом", en: "Moderate — close to the skin, with a dark trail" },
+      sillage: { ru: "Очень мощный — его слышно через всю комнату", en: "Very powerful — noticed across the whole room" },
       season: { ru: "Осень, зима и дождливая весна", en: "Autumn, winter and rainy spring" },
       time: { ru: "Утро, прогулки, работа, тихие вечера дома", en: "Mornings, walks, work, quiet evenings at home" },
       tip: { ru: "Нанесите на шарф или воротник: на ткани дёготь и озон звучат чище, чем на коже.", en: "Spray it on a scarf or a collar: tar and ozone smell cleaner on fabric than on skin." },
